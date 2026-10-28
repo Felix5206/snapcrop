@@ -1,0 +1,11 @@
+# 统一行尾，避免跨平台协作时的 diff 噪音
+* text=auto eol=lf
+
+# 二进制资源不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary

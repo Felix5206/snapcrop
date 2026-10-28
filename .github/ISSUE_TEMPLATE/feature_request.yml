@@ -1,0 +1,57 @@
+name: 功能建议
+description: 提出新功能、新模板或改进建议
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+      description: 描述你遇到的场景与痛点，不要直接给方案
+      placeholder: 处理几百张毕业照时需要统一留白边，目前只能逐张调整
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的方案
+      description: 你希望 SnapCrop 怎么做
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的替代方案
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 建议类型
+      options:
+        - 新尺寸模板
+        - 编辑能力（拖动/缩放/旋转等）
+        - 批量与导出
+        - 界面与体验
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: 参考资料
+      description: 若建议新增证件照模板，请附官方规格链接
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: agree
+    attributes:
+      label: 确认项
+      options:
+        - label: 该建议不违反「零依赖 / 零上传 / 零构建」原则，或我已说明理由
+          required: false

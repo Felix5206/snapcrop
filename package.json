@@ -1,0 +1,35 @@
+{
+  "name": "snapcrop",
+  "version": "1.0.0",
+  "description": "SnapCrop 快裁 — 纯本地、零上传的批量照片裁切工具，内置证件照与冲印尺寸模板，支持拖拽、缩放、旋转与一键批量导出。",
+  "keywords": [
+    "photo-crop",
+    "id-photo",
+    "证件照",
+    "batch-image",
+    "canvas",
+    "image-resize",
+    "裁剪",
+    "照片处理",
+    "vanilla-js",
+    "offline-tool"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Felix5206/snapcrop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Felix5206/snapcrop/issues"
+  },
+  "homepage": "https://github.com/Felix5206/snapcrop#readme",
+  "scripts": {
+    "test": "node tests/run.js",
+    "start": "python serve.py",
+    "start:node": "npx --yes serve .",
+    "start:php": "php -S 127.0.0.1:5173"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

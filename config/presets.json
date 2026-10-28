@@ -1,0 +1,52 @@
+[
+  {
+    "id": "ext-australia-visa",
+    "name": "澳大利亚签证",
+    "group": "扩展模板",
+    "unit": "mm",
+    "w": 35,
+    "h": 45,
+    "dpi": 300,
+    "desc": "413 × 531 px @300dpi"
+  },
+  {
+    "id": "ext-canada-visa",
+    "name": "加拿大签证",
+    "group": "扩展模板",
+    "unit": "mm",
+    "w": 35,
+    "h": 50,
+    "dpi": 300,
+    "desc": "413 × 591 px @300dpi"
+  },
+  {
+    "id": "ext-korea-visa",
+    "name": "韩国签证",
+    "group": "扩展模板",
+    "unit": "mm",
+    "w": 35,
+    "h": 45,
+    "dpi": 300,
+    "desc": "413 × 531 px @300dpi"
+  },
+  {
+    "id": "ext-instagram-square",
+    "name": "Instagram 方图",
+    "group": "扩展模板",
+    "unit": "px",
+    "w": 1080,
+    "h": 1080,
+    "dpi": 300,
+    "desc": "社媒 1:1"
+  },
+  {
+    "id": "ext-resume-a4-half",
+    "name": "A4 半页",
+    "group": "扩展模板",
+    "unit": "mm",
+    "w": 105,
+    "h": 148.5,
+    "dpi": 200,
+    "desc": "826 × 1169 px @200dpi"
+  }
+]

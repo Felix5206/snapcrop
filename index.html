@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="简裁 SnapCrop — 纯本地、零上传的照片裁切工具：批量证件照裁切 + 原像素无损精准裁剪，不经过服务器。">
+<meta name="theme-color" content="#2f6bff">
+<link rel="icon" href="assets/brand/icon.svg" type="image/svg+xml">
+<title>简裁 SnapCrop · 本地照片裁切</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ============================ 顶栏 ============================ -->
+<header class="topbar">
+  <div class="topbar__left">
+    <img class="logo" src="assets/brand/icon.svg" alt="SnapCrop">
+    <div class="brand">
+      <strong>简裁</strong>
+      <span>SnapCrop · 本地照片裁切</span>
+    </div>
+  </div>
+
+  <div class="seg" role="tablist" aria-label="功能模式">
+    <button class="seg__btn is-active" data-mode="batch" role="tab" aria-selected="true" title="多张照片按尺寸模板批量裁切导出">照片批量</button>
+    <button class="seg__btn" data-mode="crop" role="tab" aria-selected="false" title="单张照片固定裁剪框定位，原像素 1:1 导出">精准裁切</button>
+  </div>
+
+  <div class="topbar__right">
+    <span class="badge badge--local" title="所有处理均在浏览器本地完成，不会上传任何照片">100% 本地处理 · 不上传</span>
+    <button id="btn-import" class="btn btn--primary">导入照片</button>
+    <input id="file-input" type="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.avif" multiple hidden>
+    <button id="btn-theme" class="icon-btn" title="切换深色 / 浅色">🌙</button>
+    <a class="icon-btn" href="https://github.com/" target="_blank" rel="noopener" title="开源仓库">★</a>
+  </div>
+</header>
+
+<!-- ============================ 主体：证件照批量 ============================ -->
+<main id="mode-batch" class="layout">
+
+  <!-- ---------------------- 左：照片列表 ---------------------- -->
+  <aside class="sidebar">
+    <div class="panel-head">
+      <h3>照片 <span id="photo-count" class="count">0</span></h3>
+      <button id="btn-clear" class="btn btn--ghost btn--sm">清空</button>
+    </div>
+    <ul id="photo-list" class="photo-list"></ul>
+    <details id="meta-panel" class="meta-panel">
+      <summary class="meta-panel__summary">照片信息（EXIF）</summary>
+      <div id="meta-body" class="meta-body"></div>
+    </details>
+  </aside>
+
+  <!-- ---------------------- 中：画布 ---------------------- -->
+  <section id="workspace" class="stage">
+
+    <div id="empty-state" class="empty">
+      <div id="dropzone" class="dropzone">
+        <div class="dropzone__icon">＋</div>
+        <h2>把照片拖进来，或点击选择文件</h2>
+        <p>可一次导入上百张，横版竖版同时处理</p>
+        <div class="dropzone__hint">⌘/Ctrl + V 粘贴同样可用</div>
+      </div>
+    </div>
+
+    <div class="stage__toolbar">
+      <div class="stage__nav">
+        <button id="btn-prev" class="icon-btn" title="上一张 [">‹</button>
+        <span id="photo-index" class="stage__index">0 / 0</span>
+        <button id="btn-next" class="icon-btn" title="下一张 ]">›</button>
+      </div>
+      <div class="stage__actions">
+        <button id="btn-rot-left" class="icon-btn" title="左转 90°">↺</button>
+        <button id="btn-rot-right" class="icon-btn" title="右转 90°">↻</button>
+        <button id="btn-flip" class="icon-btn" title="水平镜像">⇋</button>
+        <button id="btn-fit" class="icon-btn" title="适应裁切框 (F)">⤢</button>
+        <button id="btn-reset" class="icon-btn" title="重置当前照片">⟲</button>
+        <span class="sep"></span>
+        <button id="btn-apply-all" class="btn btn--ghost btn--sm" title="把当前构图应用到所有照片">应用到全部</button>
+        <button id="btn-confirm-next" class="btn btn--sm" title="标记当前照片为已确认，并跳到下一张 (Enter)">✓ 确认并下一张</button>
+      </div>
+    </div>
+
+    <div id="canvas-wrap" class="canvas-wrap">
+      <canvas id="canvas" width="300" height="420" aria-label="裁切预览"></canvas>
+    </div>
+
+    <div class="stage__footer">
+      <div class="slider-row">
+        <label for="range-zoom">缩放</label>
+        <input id="range-zoom" type="range" min="100" max="800" step="1" value="100">
+        <span id="zoom-val" class="val">100%</span>
+      </div>
+      <div class="slider-row">
+        <label for="range-rotate">旋转</label>
+        <input id="range-rotate" type="range" min="-180" max="180" step="1" value="0">
+        <span id="rotate-val" class="val">0°</span>
+      </div>
+      <div id="size-badge" class="size-badge">295 × 413 px</div>
+    </div>
+  </section>
+
+  <!-- ---------------------- 右：参数面板 ---------------------- -->
+  <aside class="panel">
+
+    <section class="panel__block">
+      <div class="panel-head">
+        <h3>尺寸模板</h3>
+        <div class="panel-head__ops">
+          <button id="btn-import-config" class="btn btn--ghost btn--sm" title="导入 presets.json">导入</button>
+          <button id="btn-export-config" class="btn btn--ghost btn--sm" title="导出全部模板为 JSON">导出</button>
+          <input id="config-input" type="file" accept=".json" hidden>
+        </div>
+      </div>
+      <div id="preset-list" class="preset-list"></div>
+    </section>
+
+    <section class="panel__block">
+      <div class="panel-head"><h3>自定义尺寸</h3></div>
+      <div class="form">
+        <div class="field field--row">
+          <input id="p-name" type="text" placeholder="模板名称（可选）">
+        </div>
+        <div class="field field--row">
+          <input id="p-w" type="number" min="1" step="1" value="25" aria-label="宽">
+          <span class="field__x">×</span>
+          <input id="p-h" type="number" min="1" step="1" value="35" aria-label="高">
+          <select id="p-unit" aria-label="单位">
+            <option value="mm">毫米</option>
+            <option value="px">像素</option>
+          </select>
+          <button id="btn-lock" class="icon-btn is-active" title="锁定宽高比">🔗</button>
+        </div>
+        <div class="field field--row">
+          <label class="field__label" for="p-dpi">输出分辨率</label>
+          <select id="p-dpi">
+            <option value="150">150 dpi</option>
+            <option value="200">200 dpi</option>
+            <option value="300" selected>300 dpi（冲印标准）</option>
+            <option value="350">350 dpi</option>
+            <option value="600">600 dpi（高清）</option>
+          </select>
+        </div>
+        <button id="btn-save-preset" class="btn btn--ghost btn--full">保存为我的模板</button>
+      </div>
+    </section>
+
+    <section class="panel__block">
+      <div class="panel-head"><h3>输出设置</h3></div>
+      <div class="form">
+        <div class="field field--row">
+          <label class="field__label" for="out-format">格式</label>
+          <select id="out-format">
+            <option value="image/jpeg">JPG（体积小）</option>
+            <option value="image/png">PNG（无损）</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <div class="field field--row">
+          <label class="field__label" for="out-quality">质量</label>
+          <input id="out-quality" type="range" min="50" max="100" step="1" value="92">
+          <span id="quality-val" class="val">92%</span>
+        </div>
+        <div class="field field--row" id="row-bg">
+          <label class="field__label" for="out-bg">背景色</label>
+          <input id="out-bg" type="color" value="#ffffff">
+        </div>
+        <label class="check"><input id="out-transparent" type="checkbox"> PNG 透明背景</label>
+        <div class="field field--row">
+          <label class="field__label" for="out-pack">打包</label>
+          <select id="out-pack">
+            <option value="zip">ZIP 压缩包</option>
+            <option value="files">逐张下载</option>
+          </select>
+        </div>
+        <div class="field field--row">
+          <label class="field__label" for="out-namerule">命名</label>
+          <input id="out-namerule" type="text" value="{name}_{preset}_{w}x{h}" title="可用变量：{name} {preset} {w} {h} {dpi} {index}">
+        </div>
+        <label class="check"><input id="out-only-done" type="checkbox"> 仅导出已确认的照片</label>
+      </div>
+    </section>
+
+    <section class="panel__block">
+      <div class="panel-head"><h3>视图</h3></div>
+      <div class="form">
+        <div class="field field--row">
+          <label class="field__label" for="ui-guide">参考线</label>
+          <select id="ui-guide">
+            <option value="thirds">三分线</option>
+            <option value="center">中心十字</option>
+            <option value="idphoto">证件照构图</option>
+            <option value="both">三分线 + 中心</option>
+            <option value="none">不显示</option>
+          </select>
+        </div>
+        <label class="check"><input id="ui-allow-blank" type="checkbox"> 允许留白（不强制铺满）</label>
+        <label class="check"><input id="ui-auto-orient" type="checkbox" checked> 自动纠正横竖方向</label>
+      </div>
+    </section>
+
+    <div class="panel__sticky">
+      <button id="btn-save-one" class="btn btn--ghost">保存当前</button>
+      <button id="btn-export" class="btn btn--primary btn--block">批量裁切并导出</button>
+      <p class="panel__note">快捷键：方向键移动 · +/- 缩放 · [ ] 切图 · Enter 确认 · Delete 移除</p>
+    </div>
+  </aside>
+</main>
+
+<!-- ============================ 主体：精准裁剪 ============================ -->
+<section id="mode-crop" class="layout" hidden>
+
+  <!-- 左：图片与来源 -->
+  <aside class="sidebar">
+    <div class="panel-head">
+      <h3>图片</h3>
+      <button id="crop-btn-reselect" class="btn btn--ghost btn--sm">重新选择</button>
+    </div>
+    <div class="crop-side">
+      <div id="crop-dropzone" class="crop-drop" tabindex="0" role="button" aria-label="选择图片">
+        <div class="crop-drop__icon">＋</div>
+        <p>点击选择，或把图片拖进来</p>
+        <span class="hint">单张 · JPG / PNG / WebP / BMP / GIF / AVIF</span>
+      </div>
+      <input id="crop-file-input" type="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.avif" hidden>
+      <div class="kv"><span>当前图片</span><b id="crop-file-name">未选择图片</b></div>
+      <div class="kv"><span>原图尺寸</span><b id="crop-img-info">未选择图片</b></div>
+      <details id="crop-meta-panel" class="meta-panel">
+        <summary class="meta-panel__summary">照片信息（EXIF）</summary>
+        <div id="crop-meta-body" class="meta-body"></div>
+      </details>
+    </div>
+    <div class="sidebar__tip">
+      「精准裁剪」以<b>原图像素 1:1</b> 导出：裁剪框尺寸即输出尺寸，视图缩放只影响预览，不重采样、不二次压缩。
+    </div>
+  </aside>
+
+  <!-- 中：预览 -->
+  <section class="stage">
+    <div id="crop-empty" class="empty">
+      <div class="dropzone dropzone--sm">
+        <div class="dropzone__icon">＋</div>
+        <h2>先在左侧选择一张图片</h2>
+        <p>支持点击与拖拽上传，也支持 Ctrl/⌘ + V 粘贴</p>
+      </div>
+    </div>
+
+    <div class="stage__toolbar">
+      <div class="stage__nav">
+        <button id="crop-btn-fit" class="icon-btn" title="裁剪框适配窗口">⤢</button>
+        <button id="crop-btn-reset" class="icon-btn" title="重置位置到居中">⟲</button>
+      </div>
+      <div class="stage__actions">
+        <span class="hint">拖动图片移动位置 · 滚轮缩放视图</span>
+      </div>
+    </div>
+
+    <div id="crop-canvas-wrap" class="canvas-wrap">
+      <canvas id="crop-canvas" aria-label="裁剪预览"></canvas>
+    </div>
+
+    <div class="stage__footer">
+      <div class="slider-row">
+        <label for="crop-zoom">视图缩放</label>
+        <input id="crop-zoom" type="range" min="2" max="400" step="1" value="100">
+        <span id="crop-zoom-val" class="val">100%</span>
+      </div>
+      <div class="size-badge" id="crop-pos-info">X 0 , Y 0</div>
+    </div>
+  </section>
+
+  <!-- 右：裁剪与输出 -->
+  <aside class="panel">
+    <section class="panel__block">
+      <div class="panel-head"><h3>裁剪框（= 输出像素）</h3></div>
+      <div class="form">
+        <div class="field field--row">
+          <input id="crop-w" type="number" min="1" step="1" value="800" aria-label="裁剪宽">
+          <span class="field__x">×</span>
+          <input id="crop-h" type="number" min="1" step="1" value="800" aria-label="裁剪高">
+          <span class="field__label">px</span>
+          <button id="crop-lock" class="icon-btn" title="锁定宽高比">🔗</button>
+        </div>
+        <div id="crop-ratios" class="chips"></div>
+        <div class="field field--row">
+          <label class="field__label" for="crop-preset-pick">套用模板</label>
+          <select id="crop-preset-pick"><option value="">— 自定义 —</option></select>
+        </div>
+        <label class="check"><input id="crop-allow-blank" type="checkbox"> 允许留白（图片小于裁剪框时）</label>
+        <p id="crop-warn" class="warn" hidden></p>
+      </div>
+    </section>
+
+    <section class="panel__block">
+      <div class="panel-head"><h3>输出</h3></div>
+      <div class="form">
+        <div class="field field--row">
+          <label class="field__label" for="crop-format">格式</label>
+          <select id="crop-format">
+            <option value="image/png">PNG（无损，推荐）</option>
+            <option value="auto">沿用原格式</option>
+          </select>
+        </div>
+        <label class="check"><input id="crop-bg-fill" type="checkbox" checked> 留白处填充白底</label>
+        <div class="kv"><span>输出尺寸</span><b id="crop-out-info">—</b></div>
+        <div class="crop-preview">
+          <div class="crop-preview__title">框内效果（实时）</div>
+          <canvas id="crop-preview-canvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <div class="panel__sticky">
+      <button id="crop-btn-cancel" class="btn btn--ghost">取消</button>
+      <button id="crop-btn-confirm" class="btn btn--primary btn--block">确定并下载</button>
+      <p class="panel__note">浏览器本地导出，不上传服务器；原文件不会被修改。</p>
+    </div>
+  </aside>
+</section>
+
+<!-- ============================ 进度 / 提示 ============================ -->
+<div id="progress" class="progress" hidden>
+  <div class="progress__bar"><span id="progress-bar"></span></div>
+  <span id="progress-text" class="progress__text"></span>
+  <button id="btn-cancel" class="btn btn--ghost btn--sm">取消</button>
+</div>
+
+<div id="toast" class="toast"></div>
+<div class="drop-mask">松开即可导入照片</div>
+
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/presets.js"></script>
+<script src="assets/js/zip.js"></script>
+<script src="assets/js/importer.js"></script>
+<script src="assets/js/editor.js"></script>
+<script src="assets/js/exporter.js"></script>
+<script src="assets/js/metadata.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cropper.js"></script>
+</body>
+</html>

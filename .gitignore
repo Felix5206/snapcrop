@@ -1,0 +1,45 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.lock
+
+# 构建产物
+dist/
+build/
+*.zip
+*.tar.gz
+
+# 日志
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# 编辑器 / 系统
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 环境变量与密钥（敏感信息）
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+credentials.json
+*.keystore
+
+# 本地临时文件
+*.tmp
+*.swp
+*.bak
+Thumbs.db
+.DS_Store
+
+# 截图原始素材（体积大，按需提交压缩版）
+docs/screenshots/raw/
