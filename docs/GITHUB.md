@@ -116,7 +116,27 @@ docs/GITHUB.md          本文
 可选补充：`CODE_OF_CONDUCT.md`（采用 Contributor Covenant 2.1）、`SECURITY.md`、
 `.github/workflows/pages.yml`（自动部署 Pages）、`.github/FUNDING.yml`。
 
-## 四、首次提交
+## 四、首次提交与一键发布
+
+### 一键发布（推荐）
+
+仓库内置发布脚本，自动完成「创建公开仓库 → 配置远程 → 推送 main」：
+
+```bash
+# bash / Git Bash
+export GITHUB_TOKEN='ghp_xxxxxx'
+./scripts/publish.sh
+
+# Windows（.ps1 脚本）
+$env:GITHUB_TOKEN = 'ghp_xxxxxx'
+.\scripts\publish.ps1
+```
+
+不设置环境变量时，脚本会在运行时提示输入 token。token **不会写入任何文件**，
+仅通过 `git -c http.extraHeader=...` 传给单个 git 进程；仓库已存在时自动跳过创建步骤。
+脚本创建的是 `public` 仓库，若需私有，把脚本里的 `private` 改为 `$true` / `true`。
+
+### 手动发布
 
 ```bash
 cd snapcrop
@@ -126,7 +146,7 @@ git commit -m "feat: SnapCrop 首个版本 —— 本地批量照片裁切工具
 
 git remote add origin https://github.com/Felix5206/snapcrop.git
 git branch -M main
-git push -u origin main
+git -c http.extraHeader="Authorization: Bearer <TOKEN>" push -u origin main
 ```
 
 提交前自检：
