@@ -45,3 +45,5 @@ Thumbs.db
 *.spec.bak
 
 # 截图原始素材（体积大，按需提交压缩版）
+__pycache__/
+*.pyc
