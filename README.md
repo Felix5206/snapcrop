@@ -1,23 +1,40 @@
+<div align="center">
+
+<img src="assets/brand/icon.svg" width="120" alt="SnapCrop Logo">
+
 # 简裁 · SnapCrop
 
-> **纯本地、零上传的照片裁切工具。** 两种模式：**照片批量**（一寸到十二寸等模板，拖动/缩放/旋转，一键批量导出）与**精准裁切**（固定裁剪框定位，按**原图像素 1:1 无损导出**）。
+### 纯本地、零上传的照片裁切工具
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Zero Dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#技术选型)
-[![Vanilla JS](https://img.shields.io/badge/vanilla-JS-f7df1e.svg)](#项目结构)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg)](./CONTRIBUTING.md)
+**照片批量** + **原像素无损精准裁切**，所有处理都在你的浏览器里完成，不经过服务器
 
-[English](#english) | [简体中文](#简体中文)
+<br>
 
-<p align="center">
-  <img src="assets/brand/cover.svg" alt="SnapCrop 封面" width="760">
-</p>
+<img alt="License" src="https://img.shields.io/badge/License-MIT-6aa84f?style=flat-square">
+<img alt="Version" src="https://img.shields.io/badge/version-1.0.0-4c1?style=flat-square">
+<img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square">
+<img alt="Vanilla JS" src="https://img.shields.io/badge/vanilla-JS-f7df1e?style=flat-square&logo=javascript&logoColor=000">
+<img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-4285f4?style=flat-square">
+
+<br>
+
+**[English](#english)** ｜ **[简体中文](#简体中文)**
+
+<br>
+
+<img src="assets/brand/cover.svg" alt="SnapCrop 封面" width="780">
+
+</div>
 
 ---
 
 ## 简体中文
 
-### 一、项目简介
+### 📑 目录
+
+[📖 一、项目简介](#一项目简介) ｜ [✨ 二、功能特性](#二功能特性) ｜ [🚀 三、快速开始](#三快速开始) ｜ [🤔 四、两种模式的区别](#四两种模式的区别为什么保留两个入口) ｜ [📋 五、使用流程](#五使用流程) ｜ [📐 六、尺寸模板](#六内置尺寸模板节选) ｜ [🏷️ 七、EXIF 信息](#七照片信息exif) ｜ [⚙️ 八、配置说明](#八配置说明) ｜ [📁 九、项目结构](#九项目结构) ｜ [🧠 十、实现原理](#十核心实现简述) ｜ [🌐 十一、浏览器兼容性](#十一浏览器兼容性) ｜ [❓ 十二、常见问题](#十二常见问题) ｜ [🗺️ 十三、路线图](#十三路线图) ｜ [🤝 十四、贡献指南](#十四贡献指南) ｜ [👨‍💻 十六、作者](#十六作者) ｜ [📄 十七、许可证](#十七许可证)
+
+### 📖 一、项目简介
 
 证件照、报名照、签证照的处理长期依赖在线工具——照片要上传到别人的服务器，隐私与批量效率都不可控。SnapCrop 用浏览器原生的 Canvas 能力把这件事搬回本地：
 
@@ -27,21 +44,21 @@
 
 适合：教务/人事批量处理证件照、摄影工作室出片、社媒批量裁图、以及任何「不想把照片传给第三方」的场景。
 
-### 二、功能特性
+### ✨ 二、功能特性
 
 | 类别 | 能力 |
 | --- | --- |
 | **模式一 · 照片批量** | 一次导入上百张，套用尺寸模板，构图可「应用到全部」，批量导出 ZIP |
 | **模式二 · 精准裁切** | 单张图片、固定裁剪框定位：裁剪框尺寸即输出像素，拖动定位 + 视图缩放，**按原图像素 1:1 导出**，不压缩、不重采样、不二次编码 |
-| 导入 | 文件选择、拖拽整页投放、`Ctrl/⌘ + V` 剪贴板粘贴；支持 JPG / PNG / WebP / BMP / GIF / AVIF |
-| 尺寸模板 | 内置 31 个模板：一寸至大二寸、身份证、驾驶证、护照/签证、3R–10R 冲印（5–12 寸）等；卡片统一显示 `宽 × 高 mm`，冲印尺寸额外标注英寸，可自由扩展 |
-| 自定义 | 宽高可切换「毫米 / 像素」，支持锁定比例，DPI 可选 150 / 200 / 300 / 350 / 600 |
-| 编辑 | 鼠标拖动移动、滚轮或滑杆缩放（100%–800%）、任意角度旋转 + 一键 90°、水平镜像、三分线 / 中心 / 证件照构图参考线 |
-| 批量 | 「应用到全部」同步构图参数；「✓ 确认并下一张」逐张复核；可选仅导出已确认项 |
-| 导出 | JPG / PNG / WebP，质量可调，背景色填充或 PNG 透明底，ZIP 打包或逐张下载，文件名模板可配 |
-| 体验 | 横版竖版自动纠正方向、深色模式、响应式三栏（桌面）与堆叠（移动端）、快捷键操作、参数本地持久化 |
+| 📥 导入 | 文件选择、拖拽整页投放、`Ctrl/⌘ + V` 剪贴板粘贴；支持 JPG / PNG / WebP / BMP / GIF / AVIF |
+| 📐 尺寸模板 | 内置 31 个模板：一寸至大二寸、身份证、驾驶证、护照/签证、3R–10R 冲印（5–12 寸）等；卡片统一显示 `宽 × 高 mm`，冲印尺寸额外标注英寸，可自由扩展 |
+| 🎛️ 自定义 | 宽高可切换「毫米 / 像素」，支持锁定比例，DPI 可选 150 / 200 / 300 / 350 / 600 |
+| 🖱️ 编辑 | 鼠标拖动移动、滚轮或滑杆缩放（100%–800%）、任意角度旋转 + 一键 90°、水平镜像、三分线 / 中心 / 证件照构图参考线 |
+| 🗂️ 批量 | 「应用到全部」同步构图参数；「✓ 确认并下一张」逐张复核；可选仅导出已确认项 |
+| 💾 导出 | JPG / PNG / WebP，质量可调，背景色填充或 PNG 透明底，ZIP 打包或逐张下载，文件名模板可配 |
+| 🌙 体验 | 横版竖版自动纠正方向、深色模式、响应式三栏（桌面）与堆叠（移动端）、快捷键操作、参数本地持久化 |
 
-### 三、快速开始
+### 🚀 三、快速开始
 
 三种方式任选其一，无需安装任何依赖：
 
@@ -59,9 +76,9 @@ npx --yes serve .          # 若机器上没有 Python
 # 把整个目录 push 到 GitHub Pages / Vercel / Netlify 均可，无需构建
 ```
 
-> 说明：`file://` 协议下绝大多数功能可用；但部分浏览器会限制剪贴板读取与本地存储，因此开发与截图建议使用方式 2。
+> 💡 说明：`file://` 协议下绝大多数功能可用；但部分浏览器会限制剪贴板读取与本地存储，因此开发与截图建议使用方式 2。
 
-### 四、两种模式的区别（为什么保留两个入口）
+### 🤔 四、两种模式的区别（为什么保留两个入口）
 
 | 维度 | 照片批量 | 精准裁切 |
 | --- | --- | --- |
@@ -74,11 +91,12 @@ npx --yes serve .          # 若机器上没有 Python
 | **格式策略** | JPG/PNG/WebP + 质量，DPI 可配 | PNG 无损优先，可沿用原格式（JPEG/WebP 质量 1.0） |
 
 **去重结论：保留两个入口，但消除重复建设。** 二者输出语义不可互相替代（重采样 vs 1:1），强行合并会让参数面板同时出现「模板 / DPI / 批量 / ZIP」与「裁剪框 / 原像素」，违背「操作流程简单清晰」。
+
 已做的去重动作：**精准裁切复用照片批量的模板库**（右侧「套用模板」下拉，选中即把模板像素填入裁剪框），尺寸配置只有一份数据源（`presets.js`）。
 
 > 顺带说明改名：「证件照批量」→「照片批量」。模板库早已覆盖冲印（3R–10R）、社媒（1080²、9:16、16:9）、A4 等，远超"证件照"范畴，原名会误导用户以为只能做证件照。
 
-### 五、使用流程
+### 📋 五、使用流程
 
 顶栏可切换两种模式：**照片批量** / **精准裁切**。
 
@@ -90,7 +108,7 @@ npx --yes serve .          # 若机器上没有 Python
 4. **逐张复核** — 按 `Enter` 或点「✓ 确认并下一张」标记已确认的照片（列表项出现绿点）。
 5. **导出** — 设置输出格式/质量/背景色与打包方式，点「批量裁切并导出」，得到一个 ZIP 压缩包。
 
-#### 快捷键
+#### ⌨️ 快捷键
 
 | 按键 | 作用 | 按键 | 作用 |
 | --- | --- | --- | --- |
@@ -108,9 +126,9 @@ npx --yes serve .          # 若机器上没有 Python
 
 边界处理：图片小于裁剪框时自动按比例收敛裁剪尺寸（或勾选「允许留白」输出留白图）；超大图预览只绘制视口可见区域、导出前内存预警；「取消」清空状态，「重新选择」直接换图。
 
-> 为什么能保证无损：导出时用 `drawImage(源矩形, 目标矩形)`，两者**尺寸恒等**，且关闭图像平滑，因此是原图像素的直接拷贝；输出优先 PNG（无损），选择「沿用原格式」时使用 JPEG/WebP 质量 1.0。
+> 🔑 为什么能保证无损：导出时用 `drawImage(源矩形, 目标矩形)`，两者**尺寸恒等**，且关闭图像平滑，因此是原图像素的直接拷贝；输出优先 PNG（无损），选择「沿用原格式」时使用 JPEG/WebP 质量 1.0。
 
-### 六、内置尺寸模板（节选）
+### 📐 六、内置尺寸模板（节选）
 
 | 分组 | 模板 | 物理尺寸 | 像素 @300dpi |
 | --- | --- | --- | --- |
@@ -136,7 +154,7 @@ npx --yes serve .          # 若机器上没有 Python
 
 > 各地证件照规范会调整，实际提交前请以官方最新公告为准；SnapCrop 提供的是常用经验值。
 
-### 七、照片信息（EXIF）
+### 🏷️ 七、照片信息（EXIF）
 
 两种模式下都有可折叠的「照片信息（EXIF）」面板（批量模式：左侧列表下方；精准裁切：左侧图片区），统一展示 4 组字段，**缺失项显示 `—`**：
 
@@ -152,7 +170,7 @@ npx --yes serve .          # 若机器上没有 Python
 - 地图链接是用户主动点击才跳转（高德 URI），应用自身不发起任何网络请求
 - 批量模式为**懒加载 + 缓存**：切换到哪张才解析哪张，不会一次性读取上百个文件
 
-### 八、配置说明
+### ⚙️ 八、配置说明
 
 尺寸模板是完全配置化的，有三个层级，优先级从低到高：
 
@@ -173,7 +191,7 @@ npx --yes serve .          # 若机器上没有 Python
 
 **输出文件命名**支持变量：`{name}` 原文件名、`{preset}` 模板名、`{w}` `{h}` 输出像素、`{dpi}`、`{index}` 两位序号。默认 `{name}_{preset}_{w}x{h}`。
 
-### 九、项目结构
+### 📁 九、项目结构
 
 ```
 snapcrop/
@@ -190,7 +208,7 @@ snapcrop/
 │   │   ├── app.js             # 主控：状态、渲染、事件、快捷键、模式切换
 │   │   ├── cropper.js         # 精准裁切：固定裁剪框定位 + 原像素 1:1 导出
 │   │   └── metadata.js        # EXIF 元数据解析（JPEG/PNG/WebP）与信息面板渲染
-│   └── brand/                 # 图标 icon.svg、封面 cover.svg
+│   └── brand/                 # 图标 icon.svg、封面 cover.svg、头像 avatar.png
 ├── config/presets.json        # 可导入的扩展模板示例
 ├── tests/run.js               # 零依赖自测：node tests/run.js（66 项断言）
 ├── docs/                      # 文档与截图规范
@@ -201,7 +219,7 @@ snapcrop/
 └── .github/                   # Issue / PR 模板
 ```
 
-### 十、核心实现简述
+### 🧠 十、核心实现简述
 
 **变换模型**（`assets/js/editor.js`）：所有变换都在「输出像素坐标系」下定义，因此预览所见即导出所得。
 
@@ -220,7 +238,7 @@ zoom      相对「刚好铺满」的倍率（切换模板或旋转时用于保�
 ZIP 由 `zip.js` 手写生成（store 模式，图片本身已压缩，无需再 deflate），避免引入外部依赖。
 批量过程逐帧 `await` 让出主线程，界面不会卡死。
 
-### 十一、浏览器兼容性
+### 🌐 十一、浏览器兼容性
 
 | 浏览器 | 版本 | 说明 |
 | --- | --- | --- |
@@ -231,7 +249,7 @@ ZIP 由 `zip.js` 手写生成（store 模式，图片本身已压缩，无需再
 
 不支持的文件：HEIC / HEIF（多数浏览器无法解码，请先转换为 JPG）；RAW 格式请先在相机软件中导出。
 
-### 十二、常见问题
+### ❓ 十二、常见问题
 
 **Q：照片会被上传到服务器吗？**
 A：不会。项目没有后端，代码中不存在任何上传请求。可用浏览器开发者工具的 Network 面板自行验证。
@@ -248,7 +266,7 @@ A：可以。当前模板、DPI、输出格式、背景色、视图选项都保�
 **Q：可以在公司内网的静态服务器上部署吗？**
 A：可以，整个目录即静态站点，复制到任意 Web 服务器目录即可，无需构建与运行时。
 
-### 十三、路线图
+### 🗺️ 十三、路线图
 
 - [ ] 常用背景色预设（白 / 蓝 / 红底）与一键换底（基于简单抠图）
 - [ ] 多模板同时输出（一次裁切导出多规格）
@@ -256,7 +274,7 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器目录�
 - [ ] 导出前压缩体积预估与限制
 - [ ] 国际化（English UI）
 
-### 十四、贡献指南
+### 🤝 十四、贡献指南
 
 欢迎任何形式的贡献：报告缺陷、提出需求、改进文档或提交代码。简要流程：
 
@@ -267,10 +285,10 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器目录�
 
 详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-### 十五、发布到 GitHub
+### 📦 十五、发布到 GitHub
 
 仓库描述、标签（topics）、封面图与界面截图规范、Release 与 Pages 配置、首次提交命令，均整理在
-[docs/GITHUB.md](./docs/GITHUB.md)。上传前只需把文中的 `Felix5206` 替换为你的 GitHub 用户名。
+[docs/GITHUB.md](./docs/GITHUB.md)。
 
 一句话描述可直接复制：
 
@@ -280,17 +298,27 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器目录�
 
 推荐 topics：`photo-crop` `image-crop` `id-photo` `证件照` `batch-processing` `canvas` `vanilla-js` `no-dependency` `privacy` `offline-tool`
 
-### 十六、作者
+### 👨‍💻 十六、作者
 
-**Felix（范建亮）** — [GitHub @Felix5206](https://github.com/Felix5206)
+<div align="center">
 
-计算机基础应用教师 / 苏州深码数创执行董事兼总经理 / 执业律师。本项目源于日常教学与业务中反复出现的
-「批量处理证件照、又不想把照片上传到第三方」的需求，因此坚持三条底线：零依赖、零上传、零构建。
+<img src="assets/brand/avatar.png" width="140" style="border-radius: 50%;" alt="Felix">
 
-欢迎通过 [Issues](https://github.com/Felix5206/snapcrop/issues) 反馈问题，或按
-[CONTRIBUTING.md](./CONTRIBUTING.md) 提交 Pull Request。
+### Felix（范建亮）
 
-### 十七、许可证
+计算机基础应用教师 · 全栈开发者 · 摄影师
+
+<br>
+
+<a href="https://github.com/Felix5206"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Felix5206-181717?style=for-the-badge&logo=github"></a>
+
+</div>
+
+本项目源于日常教学与业务中反复出现的「批量处理证件照、又不想把照片上传到第三方」的需求，因此坚持三条底线：**零依赖、零上传、零构建**。
+
+欢迎通过 [Issues](https://github.com/Felix5206/snapcrop/issues) 反馈问题，或按 [CONTRIBUTING.md](./CONTRIBUTING.md) 提交 Pull Request。
+
+### 📄 十七、许可证
 
 本项目基于 [MIT License](./LICENSE) 开源。你可以自由使用、修改与分发，包括商业用途，但需保留版权声明。
 
@@ -298,7 +326,11 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器目录�
 
 ## English
 
-### 1. Introduction
+### 📑 Table of Contents
+
+[📖 1. Introduction](#1-introduction) ｜ [✨ 2. Features](#2-features) ｜ [🚀 3. Quick Start](#3-quick-start) ｜ [🤔 4. How the Two Modes Differ](#4-how-the-two-modes-differ-why-keep-both-entries) ｜ [📋 5. Workflows](#5-workflows) ｜ [📐 6. Size Presets](#6-built-in-size-presets-excerpt) ｜ [🏷️ 7. EXIF Info](#7-photo-info-exif) ｜ [⚙️ 8. Configuration](#8-configuration) ｜ [📁 9. Project Structure](#9-project-structure) ｜ [🧠 10. Implementation](#10-core-implementation-notes) ｜ [🌐 11. Compatibility](#11-browser-compatibility) ｜ [❓ 12. FAQ](#12-faq) ｜ [🗺️ 13. Roadmap](#13-roadmap) ｜ [🤝 14. Contributing](#14-contributing) ｜ [👨‍💻 16. Author](#16-author) ｜ [📄 17. License](#17-license)
+
+### 📖 1. Introduction
 
 Processing ID photos, application photos and visa photos has long relied on online tools — your photos are uploaded to someone else's server, and neither privacy nor batch efficiency is under your control. SnapCrop brings this back to your machine using the browser's native Canvas capabilities:
 
@@ -308,21 +340,21 @@ Processing ID photos, application photos and visa photos has long relied on onli
 
 It is ideal for academic/HR staff processing ID photos in bulk, photo studios delivering work, batch cropping for social media, and any scenario where you "don't want to hand your photos to a third party".
 
-### 2. Features
+### ✨ 2. Features
 
 | Category | Capabilities |
 | --- | --- |
 | **Mode 1 · Batch Photos** | Import hundreds of photos, apply size presets, compose once and "apply to all", export as a ZIP in bulk |
 | **Mode 2 · Precision Crop** | A single image with a fixed crop box: the box size is the output size. Position it, adjust the view zoom, and **export at the original pixels 1:1** — no compression, no resampling, no re-encoding |
-| Import | File picker, full-page drag & drop, `Ctrl/⌘ + V` paste; supports JPG / PNG / WebP / BMP / GIF / AVIF |
-| Size presets | 31 built-in presets: 1-inch to large 2-inch, ID card, driver's license, passport/visa, 3R–10R prints (5–12 inch), etc. Cards uniformly show `W × H mm`, with print sizes additionally marked in inches; freely extensible |
-| Custom | Width/height switchable between "mm / px", aspect-ratio lock, DPI options 150 / 200 / 300 / 350 / 600 |
-| Editing | Drag to move, mouse wheel or slider to zoom (100%–800%), arbitrary rotation + one-tap 90°, horizontal flip, rule-of-thirds / center / ID-photo composition guides |
-| Batch | "Apply to all" syncs composition; "✓ confirm & next" reviews one by one; optionally export only confirmed items |
-| Export | JPG / PNG / WebP with adjustable quality, background fill or transparent PNG, ZIP archive or individual downloads, configurable filename template |
-| Experience | Auto orientation correction for landscape/portrait, dark mode, responsive three-column (desktop) / stacked (mobile) layout, keyboard shortcuts, local persistence of settings |
+| 📥 Import | File picker, full-page drag & drop, `Ctrl/⌘ + V` paste; supports JPG / PNG / WebP / BMP / GIF / AVIF |
+| 📐 Size presets | 31 built-in presets: 1-inch to large 2-inch, ID card, driver's license, passport/visa, 3R–10R prints (5–12 inch), etc. Cards uniformly show `W × H mm`, with print sizes additionally marked in inches; freely extensible |
+| 🎛️ Custom | Width/height switchable between "mm / px", aspect-ratio lock, DPI options 150 / 200 / 300 / 350 / 600 |
+| 🖱️ Editing | Drag to move, mouse wheel or slider to zoom (100%–800%), arbitrary rotation + one-tap 90°, horizontal flip, rule-of-thirds / center / ID-photo composition guides |
+| 🗂️ Batch | "Apply to all" syncs composition; "✓ confirm & next" reviews one by one; optionally export only confirmed items |
+| 💾 Export | JPG / PNG / WebP with adjustable quality, background fill or transparent PNG, ZIP archive or individual downloads, configurable filename template |
+| 🌙 Experience | Auto orientation correction for landscape/portrait, dark mode, responsive three-column (desktop) / stacked (mobile) layout, keyboard shortcuts, local persistence of settings |
 
-### 3. Quick Start
+### 🚀 3. Quick Start
 
 Choose any of the three methods — no dependencies to install:
 
@@ -340,9 +372,9 @@ npx --yes serve .          # if Python is not installed
 # Push the whole directory to GitHub Pages / Vercel / Netlify — no build needed
 ```
 
-> Note: most features work under the `file://` protocol, but some browsers restrict clipboard access and local storage. Use Method 2 for development and screenshots.
+> 💡 Note: most features work under the `file://` protocol, but some browsers restrict clipboard access and local storage. Use Method 2 for development and screenshots.
 
-### 4. How the Two Modes Differ (Why Keep Both Entries)
+### 🤔 4. How the Two Modes Differ (Why Keep Both Entries)
 
 | Dimension | Batch Photos | Precision Crop |
 | --- | --- | --- |
@@ -360,7 +392,7 @@ Dedup already done: **precision crop reuses the batch preset library** (the "app
 
 > A note on the rename: "ID photo batch" → "batch photos". The preset library already covers prints (3R–10R), social media (1080², 9:16, 16:9), A4 and more — far beyond ID photos. The old name mislead users into thinking it only handled ID photos.
 
-### 5. Workflows
+### 📋 5. Workflows
 
 Use the top bar to switch between **Batch Photos** / **Precision Crop**.
 
@@ -372,7 +404,7 @@ Use the top bar to switch between **Batch Photos** / **Precision Crop**.
 4. **Review one by one** — Press `Enter` or click "✓ confirm & next" to mark confirmed photos (a green dot appears on the list item).
 5. **Export** — Set output format/quality/background and packaging, then click "Batch crop & export" to get a ZIP archive.
 
-#### Keyboard shortcuts
+#### ⌨️ Keyboard shortcuts
 
 | Key | Action | Key | Action |
 | --- | --- | --- | --- |
@@ -390,9 +422,9 @@ Use the top bar to switch between **Batch Photos** / **Precision Crop**.
 
 Boundary handling: when the image is smaller than the crop box, the crop size is auto-scaled proportionally (or enable "allow margins" to output a margined image); for oversized images only the visible viewport is drawn in the preview, with a memory warning before export; "Cancel" clears the state, and "Re-select" swaps the image directly.
 
-> Why lossless is guaranteed: on export, `drawImage(source rectangle, target rectangle)` is used with **identical dimensions** and image smoothing disabled, so it is a direct copy of the original pixels. PNG (lossless) is preferred; when "keep original format" is chosen, JPEG/WebP quality 1.0 is used.
+> 🔑 Why lossless is guaranteed: on export, `drawImage(source rectangle, target rectangle)` is used with **identical dimensions** and image smoothing disabled, so it is a direct copy of the original pixels. PNG (lossless) is preferred; when "keep original format" is chosen, JPEG/WebP quality 1.0 is used.
 
-### 6. Built-in Size Presets (Excerpt)
+### 📐 6. Built-in Size Presets (Excerpt)
 
 | Group | Preset | Physical size | Pixels @300dpi |
 | --- | --- | --- | --- |
@@ -418,7 +450,7 @@ Boundary handling: when the image is smaller than the crop box, the crop size is
 
 > ID-photo specs vary by region and are updated. Please rely on the latest official announcement before submitting; SnapCrop provides common rule-of-thumb values.
 
-### 7. Photo Info (EXIF)
+### 🏷️ 7. Photo Info (EXIF)
 
 Both modes have a collapsible "Photo info (EXIF)" panel (batch mode: below the list on the left; precision crop: in the image area on the left), uniformly showing 4 field groups, with **missing items shown as `—`**:
 
@@ -434,7 +466,7 @@ Both modes have a collapsible "Photo info (EXIF)" panel (batch mode: below the l
 - The map link only navigates when the user actively clicks it (Amap URI); the app itself makes no network requests
 - Batch mode is **lazy-loaded + cached**: it parses only the photo you switch to, never reading hundreds of files at once
 
-### 8. Configuration
+### ⚙️ 8. Configuration
 
 Size presets are fully configuration-driven, with three levels (lowest to highest priority):
 
@@ -455,7 +487,7 @@ Other persistent settings live in the `localStorage` key `snapcrop.settings.v1` 
 
 **Output filenames** support variables: `{name}` original name, `{preset}` preset name, `{w}` `{h}` output pixels, `{dpi}`, `{index}` two-digit index. Default: `{name}_{preset}_{w}x{h}`.
 
-### 9. Project Structure
+### 📁 9. Project Structure
 
 ```
 snapcrop/
@@ -472,7 +504,7 @@ snapcrop/
 │   │   ├── app.js             # controller: state, rendering, events, shortcuts, mode switching
 │   │   ├── cropper.js         # precision crop: fixed box positioning + original-pixel 1:1 export
 │   │   └── metadata.js        # EXIF parsing (JPEG/PNG/WebP) & info panel rendering
-│   └── brand/                 # icon.svg, cover.svg
+│   └── brand/                 # icon.svg, cover.svg, avatar.png
 ├── config/presets.json        # importable example of extended presets
 ├── tests/run.js               # zero-dependency self-test: node tests/run.js (66 assertions)
 ├── docs/                      # docs & screenshot conventions
@@ -483,7 +515,7 @@ snapcrop/
 └── .github/                   # issue / PR templates
 ```
 
-### 10. Core Implementation Notes
+### 🧠 10. Core Implementation Notes
 
 **Transform model** (`assets/js/editor.js`): all transforms are defined in the output-pixel coordinate system, so the preview is exactly what gets exported.
 
@@ -498,7 +530,7 @@ zoom      multiplier relative to "just cover" (keeps composition when switching 
 
 **Export**: for each photo an off-screen W×H canvas is created, filled with the background color, drawn with the same transform, then encoded with `toBlob()`; the ZIP is generated by the hand-written `zip.js` (store mode — images are already compressed, no deflate needed), avoiding external dependencies. The batch process yields the main thread per frame with `await`, so the UI never freezes.
 
-### 11. Browser Compatibility
+### 🌐 11. Browser Compatibility
 
 | Browser | Version | Notes |
 | --- | --- | --- |
@@ -509,7 +541,7 @@ zoom      multiplier relative to "just cover" (keeps composition when switching 
 
 Unsupported files: HEIC / HEIF (most browsers cannot decode them — convert to JPG first); for RAW, export from your camera software first.
 
-### 12. FAQ
+### ❓ 12. FAQ
 
 **Q: Are photos uploaded to a server?**
 A: No. There is no backend and no upload request in the code. Verify it yourself with the Network panel in DevTools.
@@ -526,7 +558,7 @@ A: Yes. The current preset, DPI, output format, background and view options are 
 **Q: Can I deploy it on a company intranet static server?**
 A: Yes. The whole directory is a static site — copy it to any web server directory, no build or runtime needed.
 
-### 13. Roadmap
+### 🗺️ 13. Roadmap
 
 - [ ] Common background-color presets (white / blue / red) and one-tap background replacement (simple cutout)
 - [ ] Multiple presets at once (export several specs in one crop)
@@ -534,7 +566,7 @@ A: Yes. The whole directory is a static site — copy it to any web server direc
 - [ ] Pre-export size estimate and limits
 - [ ] Internationalization (English UI)
 
-### 14. Contributing
+### 🤝 14. Contributing
 
 Contributions of any kind are welcome: reporting bugs, requesting features, improving docs, or submitting code. Brief flow:
 
@@ -545,10 +577,10 @@ Contributions of any kind are welcome: reporting bugs, requesting features, impr
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
-### 15. Publishing to GitHub
+### 📦 15. Publishing to GitHub
 
 The repo description, topics, cover image and screenshot conventions, Release and Pages setup, and first-commit commands are collected in
-[docs/GITHUB.md](./docs/GITHUB.md). Before uploading, just replace `Felix5206` in the document with your GitHub username.
+[docs/GITHUB.md](./docs/GITHUB.md).
 
 A ready-to-copy one-line description:
 
@@ -558,15 +590,27 @@ A fully local, zero-upload photo cropper · batch photo cropping + original-pixe
 
 Recommended topics: `photo-crop` `image-crop` `id-photo` `batch-processing` `canvas` `vanilla-js` `no-dependency` `privacy` `offline-tool`
 
-### 16. Author
+### 👨‍💻 16. Author
 
-**Felix (Fan Jianliang)** — [GitHub @Felix5206](https://github.com/Felix5206)
+<div align="center">
+
+<img src="assets/brand/avatar.png" width="140" style="border-radius: 50%;" alt="Felix">
+
+### Felix (Fan Jianliang)
+
+Computer Applications Teacher · Full-Stack Developer · Photographer
+
+<br>
+
+<a href="https://github.com/Felix5206"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Felix5206-181717?style=for-the-badge&logo=github"></a>
+
+</div>
 
 This project grew out of a recurring need in daily teaching and business — "processing ID photos in bulk without uploading them to a third party" — and therefore holds three lines: zero dependencies, zero uploads, zero build.
 
 Feel free to report issues via [Issues](https://github.com/Felix5206/snapcrop/issues) or submit pull requests per [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-### 17. License
+### 📄 17. License
 
 This project is open-sourced under the [MIT License](./LICENSE). You may freely use, modify and distribute it, including commercially, as long as you retain the copyright notice.
 
