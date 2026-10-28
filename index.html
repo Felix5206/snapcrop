@@ -5,8 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="简裁 SnapCrop — 纯本地、零上传的照片裁切工具：批量证件照裁切 + 原像素无损精准裁剪，不经过服务器。">
 <meta name="theme-color" content="#2f6bff">
-<link rel="icon" href="assets/brand/icon.svg" type="image/svg+xml">
 <title>简裁 SnapCrop · 本地照片裁切</title>
+
+<!-- 应用图标：各平台 / 各尺寸 -->
+<link rel="icon" href="assets/brand/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/brand/icon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/brand/icon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/brand/icon-48.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/brand/icon-64.png">
+<link rel="icon" type="image/png" sizes="128x128" href="assets/brand/icon-128.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/brand/icon-512.png">
+<link rel="icon" type="image/svg+xml" href="assets/brand/icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/brand/icon-180.png">
+<link rel="manifest" href="assets/brand/manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="简裁">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -16,7 +32,7 @@
   <div class="topbar__left">
     <img class="logo" src="assets/brand/icon.svg" alt="SnapCrop">
     <div class="brand">
-      <strong>简裁</strong>
+      <strong>简裁 <em class="brand__ver" data-app-version>v1.0.0</em></strong>
       <span>SnapCrop · 本地照片裁切</span>
     </div>
   </div>
@@ -168,9 +184,8 @@
         <label class="check"><input id="out-transparent" type="checkbox"> PNG 透明背景</label>
         <div class="field field--row">
           <label class="field__label" for="out-pack">打包</label>
-          <select id="out-pack">
-            <option value="zip">ZIP 压缩包</option>
-            <option value="files">逐张下载</option>
+          <select id="out-pack" disabled title="自动规则：1 张照片直接导出单文件；2 张及以上自动打包 ZIP（零压缩，不损画质）">
+            <option value="auto" selected>自动：1 张 → 单文件 · 多张 → ZIP</option>
           </select>
         </div>
         <div class="field field--row">
@@ -251,7 +266,7 @@
         <button id="crop-btn-reset" class="icon-btn" title="重置位置到居中">⟲</button>
       </div>
       <div class="stage__actions">
-        <span class="hint">拖动图片移动位置 · 滚轮缩放视图</span>
+        <span class="hint">拖动 8 个控制点调整尺寸 · 按住框内拖动移动位置 · 滚轮缩放视图</span>
       </div>
     </div>
 
@@ -328,6 +343,7 @@
 <div id="toast" class="toast"></div>
 <div class="drop-mask">松开即可导入照片</div>
 
+<script src="assets/js/version.js"></script>
 <script src="assets/js/utils.js"></script>
 <script src="assets/js/presets.js"></script>
 <script src="assets/js/zip.js"></script>

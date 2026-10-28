@@ -340,12 +340,208 @@ window.SC = window.SC || {};
     });
   }
 
+  /* ===================== EXIF 移植（导出时保留元数据） =====================
+   * Canvas 重绘会剥离全部元数据；导出时把源文件的 EXIF/TIFF 块整体搬入新文件：
+   *   1) sliceTiffFrom：从源容器（JPEG APP1 / PNG eXIf / WebP EXIF）取出 TIFF 块副本
+   *   2) patchExif：    原地改写像素尺寸（0xA002/0xA003）与方向（0x0112→1）
+   *   3) transplant：   按输出容器格式重新包装并注入
+   * 任何一步失败都原样返回输出字节 —— 宁可没有元数据，绝不损坏图像。
+   */
+
+  /** 提取源文件中的原始 TIFF 块（返回独立副本，修改不影响源） */
+  function sliceTiffFrom(u8) {
+    if (!u8 || u8.length < 12) return null;
+    /* JPEG：APP1(0xFFE1) "Exif\0\0" 后即 TIFF */
+    if (u8[0] === 0xFF && u8[1] === 0xD8) {
+      var off = 2;
+      while (off + 4 <= u8.length) {
+        if (u8[off] !== 0xFF) { off++; continue; }
+        var m = u8[off + 1];
+        if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { off += 2; continue; }
+        var len = (u8[off + 2] << 8) | u8[off + 3];
+        if (len < 2) return null;
+        if (m === 0xE1 && u8[off + 4] === 0x45 && u8[off + 5] === 0x78 &&
+            u8[off + 6] === 0x69 && u8[off + 7] === 0x66 && u8[off + 8] === 0x00 && u8[off + 9] === 0x00) {
+          var ts = off + 10;
+          if (ts + 8 > u8.length || (u8[ts] !== 0x49 && u8[ts] !== 0x4D)) return null;
+          return u8.slice(ts, off + 2 + len);
+        }
+        if (m === 0xDA) return null;
+        off += 2 + len;
+      }
+      return null;
+    }
+    /* PNG：eXIf 块内容即 TIFF */
+    if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) {
+      var p = 8;
+      while (p + 8 <= u8.length) {
+        var clen = (u8[p] << 24) | (u8[p + 1] << 16) | (u8[p + 2] << 8) | u8[p + 3];
+        if (clen < 0) return null;
+        var typ = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+        if (typ === 'eXIf') {
+          var t2 = p + 8;
+          if (t2 + 8 > u8.length || (u8[t2] !== 0x49 && u8[t2] !== 0x4D)) return null;
+          return u8.slice(t2, t2 + clen);
+        }
+        if (typ === 'IDAT' || typ === 'IEND') return null;
+        p += 12 + clen;
+      }
+      return null;
+    }
+    /* WebP：EXIF 块（可能带 "Exif\0\0" 前缀） */
+    if (u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46 &&
+        u8[8] === 0x57 && u8[9] === 0x45 && u8[10] === 0x42 && u8[11] === 0x50) {
+      var o = 12;
+      while (o + 8 <= u8.length) {
+        var fourcc = String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
+        var size = u8[o + 4] | (u8[o + 5] << 8) | (u8[o + 6] << 16) | (u8[o + 7] << 24);
+        if (fourcc === 'EXIF') {
+          var t3 = o + 8;
+          if (t3 + 8 > u8.length) return null;
+          if (u8[t3] === 0x45 && u8[t3 + 1] === 0x78 && u8[t3 + 2] === 0x69 && u8[t3 + 3] === 0x66 &&
+              u8[t3 + 4] === 0x00 && u8[t3 + 5] === 0x00) {
+            t3 += 6; size -= 6;
+          }
+          if (size <= 0 || t3 + 8 > u8.length) return null;
+          if (u8[t3] !== 0x49 && u8[t3] !== 0x4D) return null;
+          return u8.slice(t3, t3 + size);
+        }
+        o += 8 + size + (size % 2);
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /**
+   * 原地改写 TIFF：像素尺寸 → 新输出尺寸；方向 → 1（正常）。
+   * 只覆盖条目内联的 2/4 字节值，不增删条目、不移动任何偏移 —— 结构零风险。
+   * 方向置 1 的原因：解码位图时已按 EXIF 方向把旋转烘焙进像素（from-image），
+   * 导出像素为“正常”朝向，若沿用原 Orientation 会被查看器二次旋转。
+   */
+  function patchExif(tiff, w, h) {
+    if (!tiff || tiff.length < 8) return tiff;
+    var bo = String.fromCharCode(tiff[0], tiff[1]);
+    if (bo !== 'II' && bo !== 'MM') return tiff;
+    var le = (bo === 'II');
+    var dv = new DataView(tiff.buffer, tiff.byteOffset, tiff.byteLength);
+    if (dv.getUint16(2, le) !== 0x002A) return tiff;
+
+    function entriesOf(ifdOffset) {
+      var map = {};
+      if (ifdOffset + 2 > dv.byteLength) return map;
+      var n = dv.getUint16(ifdOffset, le);
+      for (var i = 0; i < n; i++) {
+        var e = ifdOffset + 2 + i * 12;
+        if (e + 12 > dv.byteLength) break;
+        map[dv.getUint16(e, le)] = e;
+      }
+      return map;
+    }
+    function apply(entries) {
+      var e, type;
+      if (entries[0x0112] !== undefined) dv.setUint16(entries[0x0112] + 8, 1, le);
+      e = entries[0xA002];
+      if (e !== undefined) {
+        type = dv.getUint16(e + 2, le);
+        if (type === 4) dv.setUint32(e + 8, w, le);
+        else if (type === 3) dv.setUint16(e + 8, w, le);
+      }
+      e = entries[0xA003];
+      if (e !== undefined) {
+        type = dv.getUint16(e + 2, le);
+        if (type === 4) dv.setUint32(e + 8, h, le);
+        else if (type === 3) dv.setUint16(e + 8, h, le);
+      }
+    }
+    var ifd0 = entriesOf(dv.getUint32(4, le));
+    apply(ifd0);
+    if (ifd0[0x8769] !== undefined) apply(entriesOf(dv.getUint32(ifd0[0x8769] + 8, le)));
+    return tiff;
+  }
+
+  /** TIFF → JPEG APP1 段，插到 SOI 之后 */
+  function injectIntoJpeg(jpeg, tiff) {
+    var seg = new Uint8Array(4 + 6 + tiff.length);
+    var total = 2 + 6 + tiff.length;          // 长度字段从自身起算
+    seg[0] = 0xFF; seg[1] = 0xE1;
+    seg[2] = (total >> 8) & 0xFF; seg[3] = total & 0xFF;
+    seg.set([0x45, 0x78, 0x69, 0x66, 0x00, 0x00], 4);   // "Exif\0\0"
+    seg.set(tiff, 10);
+    var out = new Uint8Array(jpeg.length + seg.length);
+    out.set(jpeg.subarray(0, 2), 0);          // SOI
+    out.set(seg, 2);
+    out.set(jpeg.subarray(2), 2 + seg.length);
+    return out;
+  }
+
+  /** TIFF → PNG eXIf 块（含 CRC32），插到 IHDR 之后、IDAT 之前 */
+  function injectIntoPng(png, tiff, crc32) {
+    if (typeof crc32 !== 'function') return png;   // 无 CRC 实现时放弃注入，返回原图
+    var len = tiff.length;
+    var chunk = new Uint8Array(12 + len);
+    chunk[0] = (len >>> 24) & 0xFF; chunk[1] = (len >>> 16) & 0xFF;
+    chunk[2] = (len >>> 8) & 0xFF; chunk[3] = len & 0xFF;
+    chunk.set([0x65, 0x58, 0x49, 0x66], 4);   // "eXIf"
+    chunk.set(tiff, 8);
+    var crc = crc32(chunk.subarray(4, 8 + len)) >>> 0;
+    chunk[8 + len] = (crc >>> 24) & 0xFF; chunk[9 + len] = (crc >>> 16) & 0xFF;
+    chunk[10 + len] = (crc >>> 8) & 0xFF; chunk[11 + len] = crc & 0xFF;
+    var ihdrEnd = 8 + 12 + 13;                // 签名(8) + IHDR 块（长度恒为 13）
+    var out = new Uint8Array(png.length + chunk.length);
+    out.set(png.subarray(0, ihdrEnd), 0);
+    out.set(chunk, ihdrEnd);
+    out.set(png.subarray(ihdrEnd), ihdrEnd + chunk.length);
+    return out;
+  }
+
+  /** TIFF → WebP EXIF 块（含奇偶填充），插到文件头之后并修正 RIFF 总长 */
+  function injectIntoWebp(webp, tiff) {
+    var size = tiff.length;
+    var pad = size % 2;
+    var chunk = new Uint8Array(8 + size + pad);
+    chunk.set([0x45, 0x58, 0x49, 0x46], 0);   // "EXIF"
+    chunk[4] = size & 0xFF; chunk[5] = (size >> 8) & 0xFF;
+    chunk[6] = (size >> 16) & 0xFF; chunk[7] = (size >> 24) & 0xFF;
+    chunk.set(tiff, 8);
+    var out = new Uint8Array(webp.length + chunk.length);
+    out.set(webp.subarray(0, 12), 0);         // "RIFF" + size + "WEBP"
+    out.set(chunk, 12);
+    out.set(webp.subarray(12), 12 + chunk.length);
+    var riffSize = out.length - 8;
+    out[4] = riffSize & 0xFF; out[5] = (riffSize >> 8) & 0xFF;
+    out[6] = (riffSize >> 16) & 0xFF; out[7] = (riffSize >> 24) & 0xFF;
+    return out;
+  }
+
+  /**
+   * 把 src（原始文件字节）的 EXIF 整块移植进 out（导出字节），w/h 为输出像素尺寸。
+   * 失败/无元数据时原样返回 out（同一引用，可做恒等比较）。
+   */
+  function transplant(src, out, mime, w, h) {
+    try {
+      if (!src || !out || !mime) return out;
+      var t = sliceTiffFrom(src);
+      if (!t) return out;                       // 源本无 EXIF（如截图）
+      t = patchExif(t, w, h);
+      if (mime === 'image/jpeg') return injectIntoJpeg(out, t);
+      if (mime === 'image/png') return injectIntoPng(out, t, SC.zip && SC.zip.crc32);
+      if (mime === 'image/webp') return injectIntoWebp(out, t);
+      return out;
+    } catch (e) {
+      return out;
+    }
+  }
+
   SC.metadata = {
     read: read,
     parse: parseExif,
     build: build,
     renderInto: renderInto,
     fmtShutter: fmtShutter,
-    fmtDate: fmtDate
+    fmtDate: fmtDate,
+    sliceTiffFrom: sliceTiffFrom,
+    patchExif: patchExif,
+    transplant: transplant
   };
 })(window.SC);

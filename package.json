@@ -1,7 +1,7 @@
 {
   "name": "snapcrop",
   "version": "1.0.0",
-  "description": "SnapCrop 快裁 — 纯本地、零上传的批量照片裁切工具，内置证件照与冲印尺寸模板，支持拖拽、缩放、旋转与一键批量导出。",
+  "description": "简裁 SnapCrop — 纯本地、零上传的照片裁切工具：照片批量 + 原像素无损精准裁切。",
   "keywords": [
     "photo-crop",
     "id-photo",

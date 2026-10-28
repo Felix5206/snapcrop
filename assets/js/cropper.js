@@ -28,6 +28,23 @@ window.SC = window.SC || {};
     { label: '3:2', v: 3 / 2 }
   ];
 
+  /* 最小裁切尺寸（源图像素）——防止误操作拖成无效区域 */
+  var MIN_CROP = 16;
+  /* 8 个控制点：4 条边中点 + 4 个角 */
+  var HANDLES = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
+  /* 控制点命中半径（CSS px，触控时放宽） */
+  var HIT_R = 11;
+  /* 控制点方块边长（CSS px） */
+  var HANDLE_SIZE = 9;
+  /* 各控制点对应的鼠标指针 */
+  var CURSORS = {
+    nw: 'nwse-resize', se: 'nwse-resize',
+    ne: 'nesw-resize', sw: 'nesw-resize',
+    n: 'ns-resize', s: 'ns-resize',
+    e: 'ew-resize', w: 'ew-resize',
+    move: 'move'
+  };
+
   var st = {
     bmp: null, name: '', type: '', size: 0,
     iw: 0, ih: 0,
@@ -39,6 +56,10 @@ window.SC = window.SC || {};
     view: 1,
     format: 'image/png'   // image/png | auto
   };
+
+  /* 最近一次渲染的裁切框屏幕矩形 / 当前悬停的控制点（供命中与光标使用） */
+  var frameGeo = null;
+  var hoverHandle = null;
 
   /* ======================= 纯计算（可单测） ======================= */
 
@@ -77,6 +98,119 @@ window.SC = window.SC || {};
     };
   }
 
+  /* ---------------- 裁切框控制点：几何与命中（纯计算，可单测） ---------------- */
+
+  /**
+   * 8 个控制点在屏幕坐标系中的位置
+   * @param {{x:number,y:number,w:number,h:number}} f 裁切框屏幕矩形
+   * @returns {Object.<string,{x:number,y:number}>}
+   */
+  function handlePoints(f) {
+    var mx = f.x + f.w / 2, my = f.y + f.h / 2;
+    var rt = f.x + f.w, bt = f.y + f.h;
+    return {
+      nw: { x: f.x, y: f.y }, n: { x: mx, y: f.y }, ne: { x: rt, y: f.y },
+      w: { x: f.x, y: my }, e: { x: rt, y: my },
+      sw: { x: f.x, y: bt }, s: { x: mx, y: bt }, se: { x: rt, y: bt }
+    };
+  }
+
+  /**
+   * 命中测试：控制点优先，其次框内为整体移动
+   * @returns {string|null} 控制点名 / 'move'（框内）/ null（框外）
+   */
+  function hitTest(px, py, f) {
+    if (!f || f.w <= 0 || f.h <= 0) return null;
+    var pts = handlePoints(f), i, p;
+    for (i = 0; i < HANDLES.length; i++) {
+      p = pts[HANDLES[i]];
+      if (Math.abs(px - p.x) <= HIT_R && Math.abs(py - p.y) <= HIT_R) return HANDLES[i];
+    }
+    /* 控制点优先：框内靠近边缘 HIT_R 范围内仍留给控制点 */
+    if (px >= f.x && px <= f.x + f.w && py >= f.y && py <= f.y + f.h) return 'move';
+    return null;
+  }
+
+  /**
+   * 由控制点拖拽计算新裁切框（源图像素坐标系）
+   *
+   * 约束：①任何情况下不越出图片边界 ②不小于最小尺寸 ③锁比例时保持宽高比
+   * @param {string} handle 控制点名
+   * @param {{x:number,y:number,w:number,h:number}} box 拖拽起始框
+   * @param {number} dx 源图坐标系下的横向位移
+   * @param {number} dy 源图坐标系下的纵向位移
+   * @param {{iw:number,ih:number}} bounds 图片尺寸
+   * @param {{lock?:boolean,min?:number}} opts
+   * @returns {{x:number,y:number,w:number,h:number}}
+   */
+  function resizeBox(handle, box, dx, dy, bounds, opts) {
+    opts = opts || {};
+    var min = opts.min || 1;
+    var lock = !!opts.lock;
+    var x0 = box.x, y0 = box.y, w0 = box.w, h0 = box.h;
+    var rt = x0 + w0, bt = y0 + h0;      // 固定边（锚点所在边）
+    var west = handle.indexOf('w') >= 0, east = handle.indexOf('e') >= 0;
+    var north = handle.indexOf('n') >= 0, south = handle.indexOf('s') >= 0;
+
+    /* 1) 期望尺寸（尚未约束） */
+    var wantW = w0, wantH = h0;
+    if (west) wantW = w0 - dx; else if (east) wantW = w0 + dx;
+    if (north) wantH = h0 - dy; else if (south) wantH = h0 + dy;
+
+    /* 2) 锁定宽高比时统一缩放因子：角点跟随位移较大的轴，边点换算另一维 */
+    var ratio = w0 / h0;
+    if (lock) {
+      if ((west || east) && (north || south)) {
+        var kW = wantW / w0, kH = wantH / h0;
+        var k = Math.abs(kW - 1) >= Math.abs(kH - 1) ? kW : kH;
+        wantW = w0 * k; wantH = h0 * k;
+      } else if (west || east) {
+        wantH = wantW / ratio;
+      } else {
+        wantW = wantH * ratio;
+      }
+    }
+
+    /* 3) 「不越界」的可用空间
+     *    注意：锁比例时未被拖动的另一维也会被动放大，因此两个方向都要约束，
+     *    不能只对被拖动的方向取无穷大。
+     *      西拖 → 左边界可到 0，宽度上限 = 右边界；否则 → 右边界可到图片右缘
+     *      北拖 → 上边界可到 0，高度上限 = 下边界；否则 → 下边界可到图片下缘 */
+    var availW = west ? rt : (bounds.iw - x0);
+    var availH = north ? bt : (bounds.ih - y0);
+
+    /* 4) 收缩到可用空间内；锁比例时取更严格的收缩比，避免破坏比例 */
+    var w = Math.min(wantW, availW), h = Math.min(wantH, availH);
+    if (lock) {
+      var kk = Math.min(w / w0, h / h0);
+      w = w0 * kk; h = h0 * kk;
+    }
+
+    /* 5) 最小尺寸兜底（图片本身小于 min 时以图片为准，不强行撑大） */
+    var minW = Math.min(min, bounds.iw), minH = Math.min(min, bounds.ih);
+    if (lock) {
+      /* 锁比例：抬高到同时满足两个下界的宽度，再按比例换算高度 */
+      var needW = Math.max(minW, minH * ratio);
+      if (w < needW) { w = needW; h = w / ratio; }
+    } else {
+      if (w < minW) w = minW;
+      if (h < minH) h = minH;
+    }
+
+    /* 6) 二次夹紧：最小尺寸兜底不得导致越界 */
+    w = Math.min(w, availW, bounds.iw);
+    h = Math.min(h, availH, bounds.ih);
+
+    w = Math.max(1, Math.round(w));
+    h = Math.max(1, Math.round(h));
+
+    /* 7) 按方向重新定位：西/北方向以右/下边为锚 */
+    var x = x0, y = y0;
+    if (west) x = rt - w;
+    if (north) y = bt - h;
+    return { x: x, y: y, w: w, h: h };
+  }
+
   /**
    * 导出时的源/目标矩形（源尺寸恒等于目标尺寸，保证 1:1 无重采样）
    */
@@ -94,6 +228,26 @@ window.SC = window.SC || {};
   function cssVar(name, fallback) {
     var v = getComputedStyle(document.documentElement).getPropertyValue(name);
     return (v && v.trim()) || fallback;
+  }
+
+  /** 圆角矩形路径（不依赖 ctx.roundRect，兼容 Safari 15） */
+  function roundRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  /**
+   * 裁切框在屏幕（CSS 像素）坐标系中的矩形。
+   * 渲染与命中测试共用此函数，保证「所见即所点」。
+   */
+  function frameRect(cssW, cssH) {
+    var fw = st.cropW * st.view, fh = st.cropH * st.view;
+    return { x: (cssW - fw) / 2, y: (cssH - fh) / 2, w: fw, h: fh };
   }
 
   /** 让裁剪框刚好适配视口；上限 100%（1:1 真实像素，不放大失真） */
@@ -129,8 +283,9 @@ window.SC = window.SC || {};
     if (!st.bmp) return;
 
     var vs = st.view;
-    var frameW = st.cropW * vs, frameH = st.cropH * vs;
-    var frameX = (cssW - frameW) / 2, frameY = (cssH - frameH) / 2;
+    var fr = frameRect(cssW, cssH);
+    frameGeo = fr;                       // 供命中测试复用，避免重复计算
+    var frameX = fr.x, frameY = fr.y, frameW = fr.w, frameH = fr.h;
     var imgX = frameX - st.offX * vs, imgY = frameY - st.offY * vs;
 
     /* 只绘制视口可见部分对应的源区域 —— 超大图的关键优化 */
@@ -177,6 +332,22 @@ window.SC = window.SC || {};
     ctx.moveTo(frameX, frameY + frameH - c); ctx.lineTo(frameX, frameY + frameH); ctx.lineTo(frameX + c, frameY + frameH);
     ctx.moveTo(frameX + frameW - c, frameY + frameH); ctx.lineTo(frameX + frameW, frameY + frameH); ctx.lineTo(frameX + frameW, frameY + frameH - c);
     ctx.stroke();
+
+    /* ---- 8 个控制点：4 角 + 4 边中点 ---- */
+    if (st.bmp && frameW >= 24 && frameH >= 24) {
+      var pts = handlePoints(fr);
+      ctx.lineWidth = 1.5;
+      HANDLES.forEach(function (key) {
+        var p = pts[key];
+        var hot = (key === hoverHandle);
+        var s = hot ? HANDLE_SIZE + 3 : HANDLE_SIZE;
+        roundRectPath(ctx, p.x - s / 2, p.y - s / 2, s, s, 2.5);
+        ctx.fillStyle = hot ? '#2f6bff' : '#ffffff';
+        ctx.strokeStyle = '#2f6bff';
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
 
     renderOutPreview();
   }
@@ -241,6 +412,11 @@ window.SC = window.SC || {};
     if (!st.bmp) { st.cropW = w; st.cropH = h; syncInfo(); return; }
     w = Math.max(1, Math.round(w));
     h = Math.max(1, Math.round(h));
+    /* 最小裁切尺寸（图片更小时以图片为准） */
+    var minW = st.bmp ? Math.min(MIN_CROP, st.iw) : 1;
+    var minH = st.bmp ? Math.min(MIN_CROP, st.ih) : 1;
+    if (w < minW) w = minW;
+    if (h < minH) h = minH;
     if (st.lock && keepRatioFrom) {
       var ratio = st.cropW / st.cropH;
       if (keepRatioFrom === 'w') h = Math.max(1, Math.round(w / ratio));
@@ -372,33 +548,97 @@ window.SC = window.SC || {};
     U.toast('已导出 ' + W + ' × ' + H + '（' + U.formatBytes(blob.size) + '）', 'success');
   }
 
+  /* rAF 节流：拖拽过程中每帧最多渲染一次，保证流畅 */
+  var rafPending = false;
+  function scheduleRender() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(function () {
+      rafPending = false;
+      render();
+      syncInfo();
+    });
+  }
+
+  /** 屏幕坐标 → 画布局部坐标 */
+  function localPoint(cv, clientX, clientY) {
+    var r = cv.getBoundingClientRect();
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+
+  /** 把当前裁切框写回状态并同步界面（拖拽缩放用） */
+  function applyBox(box) {
+    st.cropW = Math.max(1, Math.round(box.w));
+    st.cropH = Math.max(1, Math.round(box.h));
+    var p = clampOffset(box.x, box.y, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
+    st.offX = p.x; st.offY = p.y;
+    var wi = U.$('#crop-w'), hi = U.$('#crop-h');
+    if (wi) wi.value = st.cropW;
+    if (hi) hi.value = st.cropH;
+  }
+
   function bindCanvas() {
     var cv = U.$('#crop-canvas');
     if (!cv) return;
-    var dragging = false, lastX = 0, lastY = 0;
+
+    /* drag: {mode:'move'|handle, sx, sy, box} */
+    var drag = null;
 
     cv.addEventListener('pointerdown', function (e) {
       if (!st.bmp) return;
-      dragging = true; lastX = e.clientX; lastY = e.clientY;
+      var pt = localPoint(cv, e.clientX, e.clientY);
+      var hit = hitTest(pt.x, pt.y, frameGeo) || 'move';
+      drag = {
+        mode: hit,
+        sx: e.clientX, sy: e.clientY,
+        box: { x: st.offX, y: st.offY, w: st.cropW, h: st.cropH }
+      };
       cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
       cv.classList.add('is-dragging');
+      cv.style.cursor = CURSORS[hit] || 'default';
+      e.preventDefault();
     });
 
     cv.addEventListener('pointermove', function (e) {
-      if (!dragging || !st.bmp) return;
-      /* 拖动图片向右 → 裁剪框相对图片左移 */
-      st.offX -= (e.clientX - lastX) / st.view;
-      st.offY -= (e.clientY - lastY) / st.view;
-      lastX = e.clientX; lastY = e.clientY;
-      var p = clampOffset(st.offX, st.offY, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
-      st.offX = p.x; st.offY = p.y;
-      render(); syncInfo();
+      if (!st.bmp) return;
+
+      if (!drag) {
+        /* 悬停反馈：控制点上切换指针形状 */
+        var pt0 = localPoint(cv, e.clientX, e.clientY);
+        var h = hitTest(pt0.x, pt0.y, frameGeo);
+        cv.style.cursor = h ? (CURSORS[h] || 'default') : 'default';
+        if (h !== hoverHandle) { hoverHandle = (h && h !== 'move') ? h : null; scheduleRender(); }
+        return;
+      }
+
+      var dx = (e.clientX - drag.sx) / st.view;   // 换算回源图像素
+      var dy = (e.clientY - drag.sy) / st.view;
+
+      if (drag.mode === 'move') {
+        /* 按住框内（或框外）整体拖动 → 移动裁切框位置 */
+        st.offX = drag.box.x + dx;
+        st.offY = drag.box.y + dy;
+        var p = clampOffset(st.offX, st.offY, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
+        st.offX = p.x; st.offY = p.y;
+      } else {
+        /* 控制点 → 自由缩放，受边界与最小尺寸约束 */
+        applyBox(resizeBox(drag.mode, drag.box, dx, dy,
+          { iw: st.iw, ih: st.ih },
+          { lock: st.lock, min: MIN_CROP }));
+      }
+      scheduleRender();
     });
 
-    function end() { dragging = false; cv.classList.remove('is-dragging'); }
+    function end() {
+      drag = null;
+      cv.classList.remove('is-dragging');
+    }
     cv.addEventListener('pointerup', end);
     cv.addEventListener('pointercancel', end);
     cv.addEventListener('lostpointercapture', end);
+    cv.addEventListener('pointerleave', function () {
+      if (!drag && hoverHandle) { hoverHandle = null; scheduleRender(); }
+    });
 
     cv.addEventListener('wheel', function (e) {
       if (!st.bmp) return;
@@ -531,9 +771,15 @@ window.SC = window.SC || {};
 
   SC.cropper = {
     state: st,
+    MIN_CROP: MIN_CROP,
+    HANDLES: HANDLES,
     clampOffset: clampOffset,
     convergeCropSize: convergeCropSize,
     computeExportRect: computeExportRect,
+    handlePoints: handlePoints,
+    hitTest: hitTest,
+    resizeBox: resizeBox,
+    frameRect: frameRect,
     render: render,
     loadFile: loadFile,
     cancel: cancelAll,

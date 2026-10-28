@@ -95,6 +95,20 @@ window.SC = window.SC || {};
     var data = await blobToBytes(blob);
     canvas.width = canvas.height = 0;
 
+    /* 元数据移植：Canvas 重绘会剥离 EXIF，这里把原始文件的 EXIF/TIFF 块
+       （拍摄时间、设备型号、GPS、参数等）整块搬入导出字节，并更新像素尺寸。
+       失败时保持导出字节不变，绝不因元数据问题损坏图像。 */
+    if (item.file && opts.preserveMeta !== false) {
+      try {
+        var srcBytes = await blobToBytes(item.file);
+        var patched = SC.metadata.transplant(srcBytes, data, mime, size.w, size.h);
+        if (patched !== data) {
+          data = patched;
+          blob = new Blob([patched], { type: mime });
+        }
+      } catch (e) { /* 移植失败不影响导出 */ }
+    }
+
     return { name: buildName(item, index, opts, size), data: data, blob: blob };
   }
 
@@ -131,7 +145,12 @@ window.SC = window.SC || {};
 
     var bytes = out.reduce(function (n, r) { return n + r.data.length; }, 0);
 
-    if (opts.pack === 'files') {
+    /* 数量规则（硬性，不受 UI 选项影响）：
+       仅 1 张 → 直接导出单个照片文件；2 张及以上 → 打包为 ZIP。
+       ZIP 采用 store 模式零压缩，图片字节原样进入压缩包，不因打包降低画质。 */
+    var pack = out.length === 1 ? 'files' : 'zip';
+
+    if (pack === 'files') {
       for (var k = 0; k < out.length; k++) {
         U.downloadBlob(out[k].blob, out[k].name);
         await U.nextFrame();

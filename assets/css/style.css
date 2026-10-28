@@ -85,6 +85,27 @@ h2, h3, h4 { margin: 0; font-weight: 600; }
 .brand strong { font-size: 16px; letter-spacing: .2px; }
 .brand span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* 版本号徽标 */
+.brand__ver {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .2px;
+  color: #2f6bff;
+  background: rgba(47, 107, 255, .1);
+  border: 1px solid rgba(47, 107, 255, .25);
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  vertical-align: 1.5px;
+  white-space: nowrap;
+}
+html[data-theme="dark"] .brand__ver {
+  color: #8fb3ff;
+  background: rgba(47, 107, 255, .18);
+  border-color: rgba(143, 179, 255, .3);
+}
+
 .badge {
   font-size: 11.5px;
   padding: 4px 9px;
@@ -186,7 +207,17 @@ input[type="checkbox"] { accent-color: var(--primary); }
 }
 
 .sidebar { display: flex; flex-direction: column; overflow: hidden; }
-.panel { display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 8px; }
+/* 右侧参数面板：自身即滚动容器（桌面端 body 为 overflow:hidden，页面不滚动）
+   ⚠️ 底部内边距必须为 0：padding 会让 sticky 底栏停在 padding 内侧，
+      底栏下方露出一条缝隙，滚动内容会从缝里穿出 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: 0;
+  overscroll-behavior: contain;      /* 滚到底时不把滚动传给 body */
+  scroll-padding-bottom: 12px;
+}
 .stage { display: flex; flex-direction: column; overflow: hidden; position: relative; }
 .stage.is-hidden .stage__toolbar,
 .stage.is-hidden .stage__footer { display: none; }
@@ -299,7 +330,17 @@ input[type="checkbox"] { accent-color: var(--primary); }
 .dropzone__hint { font-size: 12px; color: var(--muted); }
 
 /* ============================ 模板面板 ============================ */
-.panel__block { border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+/* 区块禁止被 flex 压缩：内容再多也不会被压扁或截断 */
+.panel__block {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+/* 最后一个区块不再画分隔线，避免与 sticky 顶边框形成「双线」 */
+.panel > .panel__block:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 12px;
+}
 .preset-list { padding: 10px 12px 4px; }
 .preset-group { margin-bottom: 12px; }
 .preset-group__title { font-size: 11.5px; color: var(--muted); margin-bottom: 7px; letter-spacing: .5px; }
@@ -375,13 +416,20 @@ input[type="checkbox"] { accent-color: var(--primary); }
 .field__label { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
 .field__x { color: var(--muted); }
 
+/* 底栏吸底：与顶部 .panel-head(sticky top:0, z-index:2) 形成「顶栏吸顶 + 底栏吸底，
+   中间内容滚动」的分层结构。z-index 需高于 panel-head，否则会被其内部控件盖住。 */
 .panel__sticky {
-  position: sticky; bottom: 0;
-  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  flex: 0 0 auto;
+  margin-top: auto;          /* 内容不足时推到最底；内容超出时自动失效，改由 sticky 吸底 */
   padding: 12px;
   background: var(--panel);
   border-top: 1px solid var(--border);
   display: flex; flex-direction: column; gap: 8px;
+  /* 向上投影：内容从底栏下方滚过时形成层次，消除「贴不住」的观感 */
+  box-shadow: 0 -8px 16px -10px rgba(16, 26, 48, .35);
 }
 .panel__note { margin: 2px 0 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
 
@@ -496,6 +544,8 @@ body.is-dropping .drop-mask { display: flex; }
 /* ============================ 响应式 ============================ */
 @media (max-width: 1240px) {
   .layout { grid-template-columns: 220px minmax(0, 1fr) 300px; }
+  /* 面板收窄：压缩底栏内距，避免导出按钮换行把底栏顶得过高 */
+  .panel__sticky { padding: 10px; gap: 6px; }
 }
 
 @media (max-width: 1024px) {
@@ -508,7 +558,15 @@ body.is-dropping .drop-mask { display: flex; }
   .stage { grid-area: stage; min-height: 62vh; }
   .panel { grid-area: panel; overflow: visible; }
   .sidebar { grid-area: sidebar; max-height: 320px; }
-  .panel__sticky { position: static; }
+  /* 窄屏改为页面级滚动：此时 .panel 的 overflow 变回 visible，
+     sticky 的滚动祖先退化为视口，底栏会一直悬停在屏幕底部遮挡正文，
+     因此改回常规流，并去掉投影 */
+  .panel__sticky {
+    position: static;
+    margin-top: 8px;
+    box-shadow: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
 }
 
 @media (max-width: 620px) {
@@ -519,4 +577,8 @@ body.is-dropping .drop-mask { display: flex; }
   .preset-grid { grid-template-columns: repeat(3, 1fr); }
   .photo__sub { display: none; }
   .canvas-wrap { padding: 8px; }
+  /* 小屏优先保证按钮可见：隐藏长说明文字，避免底栏过高 */
+  .panel__sticky { padding: 10px; }
+  .panel__note { display: none; }
+  .panel > .panel__block:last-of-type { padding-bottom: 8px; }
 }

@@ -24,7 +24,7 @@ window.SC = window.SC || {};
       quality: 0.92,
       bg: '#ffffff',
       transparent: false,
-      pack: 'zip',
+      /* pack 已废弃：导出打包规则固定为「1 张单文件 / 2+ 张 ZIP」，见 exporter.js */
       nameRule: '{name}_{preset}_{w}x{h}',
       onlyDone: false
     },
@@ -261,7 +261,6 @@ window.SC = window.SC || {};
     set('#out-bg', state.output.bg);
     var tr = $('#out-transparent'); if (tr) tr.checked = state.output.transparent;
     var bgRow = $('#row-bg'); if (bgRow) bgRow.hidden = state.output.transparent;
-    set('#out-pack', state.output.pack);
     set('#out-namerule', state.output.nameRule);
     var od = $('#out-only-done'); if (od) od.checked = state.output.onlyDone;
 
@@ -443,7 +442,6 @@ window.SC = window.SC || {};
         quality: state.output.quality,
         bg: state.output.bg,
         transparent: state.output.transparent,
-        pack: state.output.pack,
         nameRule: state.output.nameRule,
         presetName: state.preset.name,
         dpi: state.dpi,
@@ -682,7 +680,6 @@ window.SC = window.SC || {};
     bind('#out-transparent', 'change', function () {
       state.output.transparent = this.checked; renderCanvas(); syncPanel(); saveSettings();
     });
-    bind('#out-pack', 'change', function () { state.output.pack = this.value; saveSettings(); });
     bind('#out-namerule', 'change', function () { state.output.nameRule = this.value || '{name}_{preset}_{w}x{h}'; saveSettings(); });
     bind('#out-only-done', 'change', function () { state.output.onlyDone = this.checked; saveSettings(); });
 
