@@ -194,6 +194,7 @@ snapcrop/
 ├── config/presets.json        # 可导入的扩展模板示例
 ├── tests/run.js               # 零依赖自测：node tests/run.js（66 项断言）
 ├── docs/                      # 文档与截图规范
+├── scripts/                   # 一键发布脚本（bash + Windows .ps1）
 ├── serve.py                   # 零依赖本地静态服务器
 ├── package.json               # 元信息与便捷脚本（非运行时依赖）
 ├── CONTRIBUTING.md  CHANGELOG.md  LICENSE  .gitignore
