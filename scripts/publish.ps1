@@ -17,7 +17,7 @@ Set-Location $ProjectRoot
 
 $User  = 'Felix5206'
 $Repo  = 'snapcrop'
-$Desc  = '筒裁 SnapCrop — 纯本地、零上传的照片裁切工具：照片批量 + 原像素无损精准裁切'
+$Desc  = '简裁 SnapCrop — 纯本地、零上传的照片裁切工具：照片批量 + 原像素无损精准裁切'
 $Branch = 'main'
 
 $token = $env:GITHUB_TOKEN
