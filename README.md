@@ -7,7 +7,7 @@
 [![Vanilla JS](https://img.shields.io/badge/vanilla-JS-f7df1e.svg)](#项目结构)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg)](./CONTRIBUTING.md)
 
-**English** | [简体中文](#简体中文)
+[English](#english) | [简体中文](#简体中文)
 
 <p align="center">
   <img src="assets/brand/cover.svg" alt="SnapCrop 封面" width="760">
@@ -298,22 +298,284 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器目录�
 
 ## English
 
-SnapCrop is a **fully local, zero-upload batch photo cropper** that runs in the browser. It ships with common ID / visa / print size presets (1-inch to 6-inch), a visual editor (drag, zoom, rotate), and one-click batch export as a ZIP archive.
+### 1. Introduction
 
-**Quick start**
+Processing ID photos, application photos and visa photos has long relied on online tools — your photos are uploaded to someone else's server, and neither privacy nor batch efficiency is under your control. SnapCrop brings this back to your machine using the browser's native Canvas capabilities:
+
+- **No uploads** — all decoding, cropping and encoding happen in your browser. There is no backend and no network requests.
+- **No installation** — a zero-dependency single-page app. Just double-click `index.html`, or host it on any static server.
+- **Batch processing** — import dozens or hundreds of photos at once, compose one and "apply to all", then fine-tune and export everything as a ZIP.
+
+It is ideal for academic/HR staff processing ID photos in bulk, photo studios delivering work, batch cropping for social media, and any scenario where you "don't want to hand your photos to a third party".
+
+### 2. Features
+
+| Category | Capabilities |
+| --- | --- |
+| **Mode 1 · Batch Photos** | Import hundreds of photos, apply size presets, compose once and "apply to all", export as a ZIP in bulk |
+| **Mode 2 · Precision Crop** | A single image with a fixed crop box: the box size is the output size. Position it, adjust the view zoom, and **export at the original pixels 1:1** — no compression, no resampling, no re-encoding |
+| Import | File picker, full-page drag & drop, `Ctrl/⌘ + V` paste; supports JPG / PNG / WebP / BMP / GIF / AVIF |
+| Size presets | 31 built-in presets: 1-inch to large 2-inch, ID card, driver's license, passport/visa, 3R–10R prints (5–12 inch), etc. Cards uniformly show `W × H mm`, with print sizes additionally marked in inches; freely extensible |
+| Custom | Width/height switchable between "mm / px", aspect-ratio lock, DPI options 150 / 200 / 300 / 350 / 600 |
+| Editing | Drag to move, mouse wheel or slider to zoom (100%–800%), arbitrary rotation + one-tap 90°, horizontal flip, rule-of-thirds / center / ID-photo composition guides |
+| Batch | "Apply to all" syncs composition; "✓ confirm & next" reviews one by one; optionally export only confirmed items |
+| Export | JPG / PNG / WebP with adjustable quality, background fill or transparent PNG, ZIP archive or individual downloads, configurable filename template |
+| Experience | Auto orientation correction for landscape/portrait, dark mode, responsive three-column (desktop) / stacked (mobile) layout, keyboard shortcuts, local persistence of settings |
+
+### 3. Quick Start
+
+Choose any of the three methods — no dependencies to install:
 
 ```bash
-# open index.html directly, or serve it
-python serve.py        # http://127.0.0.1:5173
+# Method 1: Open directly (simplest)
+# Double-click index.html (latest Chrome / Edge / Firefox recommended)
+
+# Method 2: Local static server (recommended, most complete)
+python serve.py            # default http://127.0.0.1:5173
+# or
+npm start                  # equivalent, calls the python script above
+npx --yes serve .          # if Python is not installed
+
+# Method 3: Deploy as a static site
+# Push the whole directory to GitHub Pages / Vercel / Netlify — no build needed
 ```
 
-**Highlights**
+> Note: most features work under the `file://` protocol, but some browsers restrict clipboard access and local storage. Use Method 2 for development and screenshots.
 
-- No backend, no network requests — photos never leave your device.
-- Two modes: **batch ID-photo cropping** (presets, rotate/zoom, ZIP export) and **precision crop**
-  (fixed crop box, exported at the original pixels 1:1 — no resampling, no re-encoding).
-- Zero dependencies, no build step; deploy as a static site anywhere.
-- Configurable presets (`assets/js/presets.js`), custom sizes in mm or px, DPI 150–600.
-- Batch workflow: adjust one photo, apply to all, review, export.
+### 4. How the Two Modes Differ (Why Keep Both Entries)
 
-For contribution guidelines see [CONTRIBUTING.md](./CONTRIBUTING.md). Licensed under [MIT](./LICENSE).
+| Dimension | Batch Photos | Precision Crop |
+| --- | --- | --- |
+| **Purpose** | A pipeline: turn a pile of photos into a "specified spec" | Refinement: precisely extract "one region" from a photo |
+| **Use case** | Academic/HR batch ID photos, print shops, batch cropping for social media | Evidence screenshots, submission cropping, refinements that must keep original pixels |
+| **Input / Output** | Many in → ZIP out | One in → one out |
+| **What sets output size** | The size preset (25×35mm @300dpi → 295×413px) | The crop box itself (the box is as large as the output) |
+| **Resampling?** | Yes. The image is scaled to the preset (rotatable, with margin constraints) | No. Source rectangle = target rectangle, a 1:1 copy of original pixels |
+| **Implementation** | Image fits the box: the box is fixed, the image gets scale/rotate/translate | Box-selected region: the image is shown at view zoom, the box = a rectangular window on the original |
+| **Format strategy** | JPG/PNG/WebP + quality, configurable DPI | PNG lossless first, can keep the original format (JPEG/WebP quality 1.0) |
+
+**Dedup conclusion: keep both entries, but eliminate duplicated work.** Their output semantics are not interchangeable (resampling vs 1:1). Forcing them together would make the parameter panel show both "preset / DPI / batch / ZIP" and "crop box / original pixels", violating "a simple, clear workflow".
+
+Dedup already done: **precision crop reuses the batch preset library** (the "apply preset" dropdown on the right fills the crop box with a preset's pixels), and there is a single data source for size configuration (`presets.js`).
+
+> A note on the rename: "ID photo batch" → "batch photos". The preset library already covers prints (3R–10R), social media (1080², 9:16, 16:9), A4 and more — far beyond ID photos. The old name mislead users into thinking it only handled ID photos.
+
+### 5. Workflows
+
+Use the top bar to switch between **Batch Photos** / **Precision Crop**.
+
+#### Mode 1: Batch Photos
+
+1. **Import** — Click "Import photos" or drag images into the window (multiple at once, mixed landscape and portrait fine).
+2. **Choose a preset** — Click one in "Size presets" on the right, e.g. "1-inch"; or manually enter width/height and DPI under "Custom size".
+3. **Compose** — On the center canvas: drag to move, wheel to zoom, slider to rotate; click "apply to all" when needed to sync the composition to every photo.
+4. **Review one by one** — Press `Enter` or click "✓ confirm & next" to mark confirmed photos (a green dot appears on the list item).
+5. **Export** — Set output format/quality/background and packaging, then click "Batch crop & export" to get a ZIP archive.
+
+#### Keyboard shortcuts
+
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| `←` `→` `↑` `↓` | Move the photo (`Shift` = 10× faster) | `[` `]` | Previous / next photo |
+| `+` `-` | Zoom in / out | `,` `.` | Rotate −1° / +1° |
+| `F` | Fit to crop box | `Enter` | Confirm current & next |
+| `Delete` | Remove current photo | Double-click canvas | Reset current photo transform |
+
+#### Mode 2: Precision Crop (original-pixel lossless)
+
+1. **Pick an image** — Click on the left or drag in a single image (also supports `Ctrl/⌘ + V` paste).
+2. **Set size** — Set the crop box width/height on the right (**the unit is the output pixel**), lock the ratio or use quick ratios 1:1 / 4:3 / 16:9.
+3. **Position** — Drag the image in the preview to choose a position, wheel or slider to adjust the **view zoom** (preview only, does not affect output); the area outside the box is darkened, and the "in-box result" syncs live at the bottom right.
+4. **Export** — Click "OK & download" to generate a PNG (or keep the original format) locally and download it — **no server involved, original file untouched**.
+
+Boundary handling: when the image is smaller than the crop box, the crop size is auto-scaled proportionally (or enable "allow margins" to output a margined image); for oversized images only the visible viewport is drawn in the preview, with a memory warning before export; "Cancel" clears the state, and "Re-select" swaps the image directly.
+
+> Why lossless is guaranteed: on export, `drawImage(source rectangle, target rectangle)` is used with **identical dimensions** and image smoothing disabled, so it is a direct copy of the original pixels. PNG (lossless) is preferred; when "keep original format" is chosen, JPEG/WebP quality 1.0 is used.
+
+### 6. Built-in Size Presets (Excerpt)
+
+| Group | Preset | Physical size | Pixels @300dpi |
+| --- | --- | --- | --- |
+| Common ID photos | 1-inch | 25 × 35 mm | 295 × 413 |
+| Common ID photos | Small 1-inch | 22 × 32 mm | 260 × 378 |
+| Common ID photos | Large 1-inch | 33 × 48 mm | 390 × 567 |
+| Common ID photos | 2-inch | 35 × 49 mm | 413 × 579 |
+| Common ID photos | Small 2-inch / Large 2-inch | 35 × 45 / 35 × 53 mm | 413 × 531 / 413 × 626 |
+| Common ID photos | ID card / social-security card | 26 × 32 mm | 358 × 441 |
+| Visa / border | Chinese passport, HK/Macau/Taiwan permits | 33 × 48 mm | 390 × 567 |
+| Visa / border | US visa | 51 × 51 mm | 600 × 600 |
+| Visa / border | Japan visa | 45 × 45 mm | 531 × 531 |
+| Visa / border | Schengen / UK visa | 35 × 45 mm | 413 × 531 |
+| Print photos | 3 inch (2.5×3.5 in) | 63.5 × 88.9 mm | 750 × 1050 |
+| Print photos | 4 inch (3×4 in) | 76.2 × 101.6 mm | 900 × 1200 |
+| Print photos | 5 inch (3R, 3.5×5 in) | 88.9 × 127 mm | 1050 × 1500 |
+| Print photos | 6 inch (4R, 4×6 in) | 101.6 × 152.4 mm | 1200 × 1800 |
+| Print photos | 7 inch (5R, 5×7 in) | 127 × 177.8 mm | 1500 × 2100 |
+| Print photos | 8 inch (6R, 6×8 in) | 152.4 × 203.2 mm | 1800 × 2400 |
+| Print photos | 10 inch (8R, 8×10 in) | 203.2 × 254 mm | 2400 × 3000 |
+| Print photos | 12 inch (10R, 10×12 in) | 254 × 304.8 mm | 3000 × 3600 |
+| Social & general | Square avatar / 1080 square / 9:16 / 16:9 / A4 | — | 295² / 1080² / 1080×1920 / 1920×1080 / 2480×3508 |
+
+> ID-photo specs vary by region and are updated. Please rely on the latest official announcement before submitting; SnapCrop provides common rule-of-thumb values.
+
+### 7. Photo Info (EXIF)
+
+Both modes have a collapsible "Photo info (EXIF)" panel (batch mode: below the list on the left; precision crop: in the image area on the left), uniformly showing 4 field groups, with **missing items shown as `—`**:
+
+| Group | Fields |
+| --- | --- |
+| File | Filename, format, size, pixel dimensions, orientation |
+| Capture device | Device model (maker + model), lens, processing software |
+| Capture params | Capture time, aperture, shutter, ISO, focal length, equivalent focal length, exposure compensation, flash, metering mode |
+| Location | Coordinates (decimal degrees + N/S/E/W), altitude; when GPS is present, a "view capture location on map" link |
+
+- Parsing is done locally in the browser with a zero-dependency hand-written EXIF parser (`assets/js/metadata.js`), supporting JPEG (APP1), PNG (eXIf chunk) and WebP (EXIF chunk)
+- Coordinates exist only when the photo carries GPS; photos compressed by social apps usually have EXIF stripped, in which case the whole group shows placeholders
+- The map link only navigates when the user actively clicks it (Amap URI); the app itself makes no network requests
+- Batch mode is **lazy-loaded + cached**: it parses only the photo you switch to, never reading hundreds of files at once
+
+### 8. Configuration
+
+Size presets are fully configuration-driven, with three levels (lowest to highest priority):
+
+1. **Built-in presets** — the `SC.PRESETS` array in `assets/js/presets.js`. Append one entry to add a preset:
+
+   ```js
+   { id: 'my-badge', name: 'Name badge', group: 'Custom', unit: 'mm', w: 54, h: 86, dpi: 300, desc: 'Badge insert' }
+   ```
+
+   - With `unit: 'mm'`, pixels are derived by `dpi` (`px = mm ÷ 25.4 × dpi`);
+   - With `unit: 'px'`, `w / h` are used directly as output pixels, ignoring DPI.
+
+2. **External config file** — `config/presets.json` is an example in the same format the UI imports (an array). Use "Size presets → Import" on the right to load it in bulk.
+
+3. **User custom presets** — "Save as my preset" in the UI writes to `localStorage` (key `snapcrop.customPresets.v1`), without polluting the repository code.
+
+Other persistent settings live in the `localStorage` key `snapcrop.settings.v1` (current preset, DPI, output format, quality, background, view options).
+
+**Output filenames** support variables: `{name}` original name, `{preset}` preset name, `{w}` `{h}` output pixels, `{dpi}`, `{index}` two-digit index. Default: `{name}_{preset}_{w}x{h}`.
+
+### 9. Project Structure
+
+```
+snapcrop/
+├── index.html                 # single-page app entry (three-column layout)
+├── assets/
+│   ├── css/style.css          # styles: CSS-variable themes, responsive three columns
+│   ├── js/
+│   │   ├── utils.js           # DOM / math / download / local-storage utilities
+│   │   ├── presets.js         # size preset config, pixel conversion, custom-preset persistence
+│   │   ├── zip.js             # zero-dependency ZIP packaging (store mode + CRC32)
+│   │   ├── importer.js        # import: picker / drag / paste, decoding & thumbnails
+│   │   ├── editor.js          # core: transform model, drawing, pointer & wheel interactions
+│   │   ├── exporter.js        # batch rendering, encoding, packaging export
+│   │   ├── app.js             # controller: state, rendering, events, shortcuts, mode switching
+│   │   ├── cropper.js         # precision crop: fixed box positioning + original-pixel 1:1 export
+│   │   └── metadata.js        # EXIF parsing (JPEG/PNG/WebP) & info panel rendering
+│   └── brand/                 # icon.svg, cover.svg
+├── config/presets.json        # importable example of extended presets
+├── tests/run.js               # zero-dependency self-test: node tests/run.js (66 assertions)
+├── docs/                      # docs & screenshot conventions
+├── scripts/                   # one-click publish scripts (bash + Windows .ps1)
+├── serve.py                   # zero-dependency local static server
+├── package.json               # metadata & convenience scripts (not a runtime dependency)
+├── CONTRIBUTING.md  CHANGELOG.md  LICENSE  .gitignore
+└── .github/                   # issue / PR templates
+```
+
+### 10. Core Implementation Notes
+
+**Transform model** (`assets/js/editor.js`): all transforms are defined in the output-pixel coordinate system, so the preview is exactly what gets exported.
+
+```
+tx, ty    offset relative to the crop-box center (px)
+scale     zoom factor (1 = original pixels)
+rotation  rotation angle (degrees)
+zoom      multiplier relative to "just cover" (keeps composition when switching presets or rotating)
+```
+
+**Cover calculation**: after rotation, the bounding box is `bw = iw·|cosθ| + ih·|sinθ|`, `bh = iw·|sinθ| + ih·|cosθ|`, and the scale that just covers W×H is `max(W/bw, H/bh)`. Margins are disallowed by default and the offset is constrained within the bounding box by `clampOffset()`, so photo edges never enter the crop box.
+
+**Export**: for each photo an off-screen W×H canvas is created, filled with the background color, drawn with the same transform, then encoded with `toBlob()`; the ZIP is generated by the hand-written `zip.js` (store mode — images are already compressed, no deflate needed), avoiding external dependencies. The batch process yields the main thread per frame with `await`, so the UI never freezes.
+
+### 11. Browser Compatibility
+
+| Browser | Version | Notes |
+| --- | --- | --- |
+| Chrome / Edge | ≥ 90 | Full support (recommended) |
+| Firefox | ≥ 90 | Full support |
+| Safari | ≥ 15 | WebP export falls back to JPG |
+| Mobile browsers | Mainstream | Layout auto-stacks; supports touch drag and single-finger drag in two-finger scenarios |
+
+Unsupported files: HEIC / HEIF (most browsers cannot decode them — convert to JPG first); for RAW, export from your camera software first.
+
+### 12. FAQ
+
+**Q: Are photos uploaded to a server?**
+A: No. There is no backend and no upload request in the code. Verify it yourself with the Network panel in DevTools.
+
+**Q: Why is the exported photo smaller than the original?**
+A: Output size is set by the preset (e.g. 295×413). For a larger image, raise the DPI or use pixel units in custom size.
+
+**Q: Does batch processing freeze the browser?**
+A: No. Rendering proceeds photo by photo, yielding a frame between each, with a live, cancellable progress bar. For hundreds of photos, process in batches (≤ 200 each).
+
+**Q: Can I continue editing last time's parameters?**
+A: Yes. The current preset, DPI, output format, background and view options are stored in the browser's `localStorage` and restored on next open.
+
+**Q: Can I deploy it on a company intranet static server?**
+A: Yes. The whole directory is a static site — copy it to any web server directory, no build or runtime needed.
+
+### 13. Roadmap
+
+- [ ] Common background-color presets (white / blue / red) and one-tap background replacement (simple cutout)
+- [ ] Multiple presets at once (export several specs in one crop)
+- [ ] Face-detection auto-centering (WebAssembly / MediaPipe, optionally loaded)
+- [ ] Pre-export size estimate and limits
+- [ ] Internationalization (English UI)
+
+### 14. Contributing
+
+Contributions of any kind are welcome: reporting bugs, requesting features, improving docs, or submitting code. Brief flow:
+
+1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
+2. Keep the **zero-dependency** principle; after changes, manually verify in Chrome and Firefox
+3. Commit messages should follow [Conventional Commits](https://www.conventionalcommits.org/): `feat: add ...`
+4. Open a pull request describing the motivation, implementation and self-test results
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
+### 15. Publishing to GitHub
+
+The repo description, topics, cover image and screenshot conventions, Release and Pages setup, and first-commit commands are collected in
+[docs/GITHUB.md](./docs/GITHUB.md). Before uploading, just replace `Felix5206` in the document with your GitHub username.
+
+A ready-to-copy one-line description:
+
+```
+A fully local, zero-upload photo cropper · batch photo cropping + original-pixel lossless precision crop · no server involved
+```
+
+Recommended topics: `photo-crop` `image-crop` `id-photo` `batch-processing` `canvas` `vanilla-js` `no-dependency` `privacy` `offline-tool`
+
+### 16. Author
+
+**Felix (Fan Jianliang)** — [GitHub @Felix5206](https://github.com/Felix5206)
+
+This project grew out of a recurring need in daily teaching and business — "processing ID photos in bulk without uploading them to a third party" — and therefore holds three lines: zero dependencies, zero uploads, zero build.
+
+Feel free to report issues via [Issues](https://github.com/Felix5206/snapcrop/issues) or submit pull requests per [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+### 17. License
+
+This project is open-sourced under the [MIT License](./LICENSE). You may freely use, modify and distribute it, including commercially, as long as you retain the copyright notice.
+
+---
+
+## Star History
+
+<p align="center">
+  <a href="https://star-history.com/#Felix5206/snapcrop&Date">
+    <img src="https://api.star-history.com/svg?repos=Felix5206/snapcrop&type=Date" alt="Star History Chart" width="760">
+  </a>
+</p>
