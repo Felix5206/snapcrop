@@ -46,7 +46,7 @@ window.SC = window.SC || {};
   };
 
   var st = {
-    bmp: null, name: '', type: '', size: 0,
+    bmp: null, file: null, name: '', type: '', size: 0,
     iw: 0, ih: 0,
     cropW: 800, cropH: 800,
     offX: 0, offY: 0,
@@ -230,6 +230,17 @@ window.SC = window.SC || {};
     return (v && v.trim()) || fallback;
   }
 
+  /** Blob → Uint8Array（EXIF 移植用） */
+  function blobToBytes(blob) {
+    if (blob.arrayBuffer) return blob.arrayBuffer().then(function (b) { return new Uint8Array(b); });
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve(new Uint8Array(fr.result)); };
+      fr.onerror = reject;
+      fr.readAsArrayBuffer(blob);
+    });
+  }
+
   /** 圆角矩形路径（不依赖 ctx.roundRect，兼容 Safari 15） */
   function roundRectPath(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -409,6 +420,9 @@ window.SC = window.SC || {};
   /* ============================ 交互 ============================ */
 
   function setCropSize(w, h, keepRatioFrom) {
+    var nw = sanitizeSize(w), nh = sanitizeSize(h);
+    if (nw === null || nh === null) return;   // 非法输入：保留上一次有效尺寸
+    w = nw; h = nh;
     if (!st.bmp) { st.cropW = w; st.cropH = h; syncInfo(); return; }
     w = Math.max(1, Math.round(w));
     h = Math.max(1, Math.round(h));
@@ -457,7 +471,7 @@ window.SC = window.SC || {};
     if (!iw || !ih) { U.toast('无法读取图片尺寸', 'error'); return; }
 
     if (st.bmp && st.bmp !== bmp) SC.importer.release(st.bmp);
-    st.bmp = bmp; st.name = file.name; st.type = file.type || ''; st.size = file.size || 0;
+    st.bmp = bmp; st.file = file; st.name = file.name; st.type = file.type || ''; st.size = file.size || 0;
     st.iw = iw; st.ih = ih;
 
     /* 大图保护：初始裁剪框不超过图片，且默认取「图片内最大可裁区域」的 100% 起点 */
@@ -491,7 +505,7 @@ window.SC = window.SC || {};
 
   function cancelAll() {
     if (st.bmp) SC.importer.release(st.bmp);
-    st.bmp = null; st.name = ''; st.type = ''; st.size = 0; st.iw = 0; st.ih = 0;
+    st.bmp = null; st.file = null; st.name = ''; st.type = ''; st.size = 0; st.iw = 0; st.ih = 0;
     st.offX = 0; st.offY = 0; st.view = 1;
     var empty = U.$('#crop-empty');
     if (empty) empty.hidden = false;
@@ -543,6 +557,20 @@ window.SC = window.SC || {};
     canvas.width = canvas.height = 0;
     if (!blob) { U.toast('导出失败，请尝试缩小裁剪尺寸', 'error'); return; }
 
+    /* 元数据移植：Canvas 重绘会剥离 EXIF，这里把原图的 EXIF/TIFF 块整块搬入导出文件
+       （与「照片批量」导出保持一致），失败时保持原样，不影响图像输出。 */
+    var bytes = await blobToBytes(blob);
+    if (st.file && SC.metadata && SC.metadata.transplant) {
+      try {
+        var srcBytes = await blobToBytes(st.file);
+        var patched = SC.metadata.transplant(srcBytes, bytes, fmt.mime, W, H);
+        if (patched !== bytes) {
+          bytes = patched;
+          blob = new Blob([bytes], { type: fmt.mime });
+        }
+      } catch (e) { /* 移植失败不影响导出 */ }
+    }
+
     var outName = U.safeName(U.baseName(st.name) + '_crop_' + W + 'x' + H) + '.' + fmt.ext;
     U.downloadBlob(blob, outName);
     U.toast('已导出 ' + W + ' × ' + H + '（' + U.formatBytes(blob.size) + '）', 'success');
@@ -564,6 +592,17 @@ window.SC = window.SC || {};
   function localPoint(cv, clientX, clientY) {
     var r = cv.getBoundingClientRect();
     return { x: clientX - r.left, y: clientY - r.top };
+  }
+
+  /**
+   * 尺寸输入清洗：非法值（NaN / ≤0 / 非有限）返回 null，由调用方忽略本次修改。
+   * 背景：输入框被清空时 parseFloat('') === NaN，而 Math.max(1, NaN) 仍是 NaN，
+   * 会让裁剪框尺寸变成 NaN 并导致渲染与导出异常。
+   */
+  function sanitizeSize(v) {
+    var n = (typeof v === 'number') ? v : parseFloat(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return n;
   }
 
   /** 把当前裁切框写回状态并同步界面（拖拽缩放用） */
@@ -773,6 +812,7 @@ window.SC = window.SC || {};
     state: st,
     MIN_CROP: MIN_CROP,
     HANDLES: HANDLES,
+    sanitizeSize: sanitizeSize,
     clampOffset: clampOffset,
     convergeCropSize: convergeCropSize,
     computeExportRect: computeExportRect,

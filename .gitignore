@@ -41,5 +41,7 @@ credentials.json
 Thumbs.db
 .DS_Store
 
+# PyInstaller 打包中间产物
+*.spec.bak
+
 # 截图原始素材（体积大，按需提交压缩版）
-docs/screenshots/raw/

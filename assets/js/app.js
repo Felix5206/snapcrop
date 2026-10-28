@@ -38,6 +38,8 @@ window.SC = window.SC || {};
 
   var exportSignal = { cancelled: false };
   var fit = 1;
+  /* 移除照片的撤销栈（最多 10 条） */
+  var undoStack = [];
 
   function current() {
     for (var i = 0; i < state.items.length; i++) {
@@ -313,12 +315,33 @@ window.SC = window.SC || {};
     var idx = state.items.findIndex(function (x) { return x.id === id; });
     if (idx < 0) return;
     SC.importer.release(state.items[idx]);
+    /* 记入撤销栈：误删可用 Ctrl+Z 恢复（位图已释放，重新解码） */
+    undoStack.push({ item: state.items[idx], index: idx });
+    if (undoStack.length > 10) undoStack.shift();
     state.items.splice(idx, 1);
     if (state.currentId === id) {
       state.currentId = state.items.length ? state.items[Math.min(idx, state.items.length - 1)].id : null;
     }
     renderAll();
     loadMeta(current());
+  }
+
+  /** 撤销上一次移除（Ctrl+Z） */
+  async function undoRemove() {
+    var last = undoStack.pop();
+    if (!last) { U.toast('没有可撤销的操作'); return; }
+    var it = last.item;
+    /* 位图在移除时已释放，这里重新解码以恢复可编辑状态 */
+    try {
+      it.bmp = await SC.importer.decode(it.file);
+    } catch (e) {
+      it.bmp = null;
+    }
+    state.items.splice(Math.min(last.index, state.items.length), 0, it);
+    state.currentId = it.id;
+    renderAll();
+    loadMeta(current());
+    U.toast('已撤销删除：' + it.name, 'success');
   }
 
   function clearAll() {
@@ -695,11 +718,15 @@ window.SC = window.SC || {};
     bind('#btn-save-one', 'click', async function () {
       var it = current();
       if (!it) { U.toast('没有可保存的照片', 'error'); return; }
-      await SC.exporter.saveCurrent(it, outSize(), {
-        format: state.output.format, quality: state.output.quality,
-        bg: state.output.bg, transparent: state.output.transparent,
-        nameRule: state.output.nameRule, presetName: state.preset.name, dpi: state.dpi
-      });
+      try {
+        await SC.exporter.saveCurrent(it, outSize(), {
+          format: state.output.format, quality: state.output.quality,
+          bg: state.output.bg, transparent: state.output.transparent,
+          nameRule: state.output.nameRule, presetName: state.preset.name, dpi: state.dpi
+        });
+      } catch (err) {
+        U.toast('保存失败：' + (err && err.message ? err.message : '未知错误'), 'error');
+      }
     });
     bind('#btn-cancel', 'click', function () { exportSignal.cancelled = true; });
 
@@ -729,7 +756,10 @@ window.SC = window.SC || {};
         case '.': rotateBy(1); return;
         case 'f': case 'F': $('#btn-fit').click(); return;
         case 'Enter': confirmAndNext(); return;
-        case 'Delete': case 'Backspace': removePhoto(it.id); return;
+        case 'Delete': removePhoto(it.id); return;
+        case 'z': case 'Z':
+          if (e.ctrlKey || e.metaKey) { e.preventDefault(); undoRemove(); }
+          return;
         default: return;
       }
       e.preventDefault();

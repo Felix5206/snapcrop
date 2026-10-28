@@ -733,6 +733,39 @@ function inspectZip(u8) {
   const zipSrc = fs.readFileSync(path.join(JS_DIR, 'zip.js'), 'utf8');
   ok(/\/\/ method: store/.test(zipSrc), 'ZIP 采用 store 零压缩（打包不降低画质）');
 
+  /* ---- 13. 精准裁切模式：EXIF 保留与输入健壮性 ---- */
+  section('13. 精准裁切模式的导出与输入健壮性');
+  const cropSrc = fs.readFileSync(path.join(JS_DIR, 'cropper.js'), 'utf8');
+  ok(cropSrc.includes('SC.metadata.transplant'), '精准裁切导出同样执行 EXIF 移植（与批量模式一致）');
+  ok(cropSrc.includes('st.file = file'), '精准裁切保留原始 File 引用（EXIF 移植所需）');
+  const san = SC.cropper.sanitizeSize;
+  ok(san(800) === 800, '合法尺寸原样返回');
+  ok(san('600') === 600, '数字字符串可解析');
+  ok(san(NaN) === null, 'NaN 被拦截（输入框清空场景）');
+  ok(san(parseFloat('')) === null, '空字符串被拦截');
+  ok(san(0) === null && san(-5) === null, '非正数被拦截');
+  ok(san(Infinity) === null, 'Infinity 被拦截');
+
+  /* ---- 14. 源码级安全与规范守卫 ---- */
+  section('14. 安全与规范守卫');
+  const appSrc = fs.readFileSync(path.join(JS_DIR, 'app.js'), 'utf8');
+  ok(!/case 'Backspace'/.test(appSrc), 'Backspace 不再触发删除（避免误删照片）');
+  ok(/case 'z': case 'Z':/.test(appSrc) && /undoRemove/.test(appSrc), '提供 Ctrl+Z 撤销删除');
+  ok(!/innerHTML\s*=\s*[^'"0-9]/.test(appSrc.replace(/innerHTML = ''/g, '')),
+    'app.js 未把用户数据直接写入 innerHTML');
+  const utilsSrc = fs.readFileSync(path.join(JS_DIR, 'utils.js'), 'utf8');
+  ok(!/innerHTML\s*=\s*[^'"0-9]/.test(utilsSrc.replace(/innerHTML = ''/g, '')),
+    'utils.js 未把用户数据直接写入 innerHTML');
+  const htmlSrc = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  ok(!/href="https:\/\/github\.com\/"/.test(htmlSrc), '顶栏开源链接不是占位地址');
+  ok(/github\.com\/Felix5206\/snapcrop/.test(htmlSrc), '开源链接指向真实仓库');
+  const serveSrc = fs.readFileSync(path.join(ROOT, 'serve.py'), 'utf8');
+  ok(/_MEIPASS/.test(serveSrc), 'serve.py 适配 PyInstaller 冻结运行（资源目录取 _MEIPASS）');
+  ok(/pick_port/.test(serveSrc), 'serve.py 端口占用时自动顺延');
+  ok(/ThreadingServer|ThreadingMixIn/.test(serveSrc), 'serve.py 使用多线程服务');
+  const metaSrc = fs.readFileSync(path.join(JS_DIR, 'metadata.js'), 'utf8');
+  ok(/case 12:\s*return dv\.getFloat64/.test(metaSrc), 'EXIF DOUBLE 类型（tag 12）按 8 字节浮点正确读取');
+
   console.log('\n' + (failed === 0
     ? '全部通过：' + passed + ' 项断言'
     : passed + ' 项通过，' + failed + ' 项失败'));

@@ -21,7 +21,8 @@ window.SC = window.SC || {};
         if (v === null || v === undefined || v === false) return;
         if (k === 'class') node.className = v;
         else if (k === 'text') node.textContent = v;
-        else if (k === 'html') node.innerHTML = v;
+        /* 刻意不提供 html: 分支：innerHTML 是 XSS 注入通道，
+           本项目所有文本一律走 textContent，需要富文本时用 DOM API 逐节点构建。 */
         else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
         else if (k.indexOf('on') === 0 && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
         else node.setAttribute(k, v === true ? '' : v);

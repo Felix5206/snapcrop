@@ -122,7 +122,7 @@ window.SC = window.SC || {};
         return dv.getInt32(off + index * 8, le) / (dv.getInt32(off + index * 8 + 4, le) || 1);
       }
       case 8: arr = []; for (i = 0; i < entry.count; i++) arr.push(dv.getInt16(off + i * 2, le)); return arr[index];
-      case 12: arr = []; for (i = 0; i < entry.count; i++) arr.push(dv.getInt64 ? 0 : 0); return arr[index];
+      case 12: return dv.getFloat64(off + index * 8, le);   // DOUBLE（此前误写成恒返回 0）
       default: return null;
     }
   }
