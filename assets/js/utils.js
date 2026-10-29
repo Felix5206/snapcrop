@@ -62,6 +62,24 @@ window.SC = window.SC || {};
   /** 文件名安全化 */
   U.safeName = function (s) { return String(s).replace(/[\\/:*?"<>|]+/g, '_').trim() || 'image'; };
 
+  /**
+   * 批量命名：pattern 中 {n}=序号(从1起)、{nn}/{nnn}=补零序号、{name}=原名(不含扩展名)。
+   * 保留各自原扩展名；模板为空时回退原名。
+   */
+  U.batchName = function (pattern, name, index) {
+    var base = U.baseName(name);
+    var m = /\.[A-Za-z0-9]{1,8}$/.exec(name);
+    var ext = m ? m[0] : '';
+    var out = String(pattern == null ? '' : pattern)
+      .replace(/\{nnn\}/g, ('00' + (index + 1)).slice(-3))
+      .replace(/\{nn\}/g, ('0' + (index + 1)).slice(-2))
+      .replace(/\{n\}/g, String(index + 1))
+      .replace(/\{name\}/g, base)
+      .trim();
+    if (!out) out = base;
+    return out + ext;
+  };
+
   U.debounce = function (fn, wait) {
     var t = null;
     return function () {

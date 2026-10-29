@@ -35,6 +35,14 @@ def resource_dir():
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    # .mjs 需显式声明为 JS（部分 Python 版本的 mimetypes 表未收录，
+    # 会让 onnxruntime 的 import() 因 MIME 不符被拒绝）；.onnx 走二进制流
+    extensions_map = dict(http.server.SimpleHTTPRequestHandler.extensions_map)
+    extensions_map.update({
+        ".mjs": "text/javascript",
+        ".onnx": "application/octet-stream",
+    })
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()

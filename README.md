@@ -7,7 +7,7 @@
 **纯本地、零上传的照片裁切工具** — 照片批量 + 原像素无损精准裁切
 
 <img alt="License" src="https://img.shields.io/badge/License-MIT-6aa84f?style=flat-square">
-<img alt="Version" src="https://img.shields.io/badge/version-1.0.0-4c1?style=flat-square">
+<img alt="Version" src="https://img.shields.io/badge/version-2.0.0-4c1?style=flat-square">
 <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square">
 <img alt="Vanilla JS" src="https://img.shields.io/badge/vanilla-JS-f7df1e?style=flat-square&logo=javascript&logoColor=000">
 <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-4285f4?style=flat-square">
@@ -248,8 +248,16 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
 ## 📋 版本历史
 
 <!-- 发布同步机制：每次发布 GitHub Release 时，必须同步将新版本条目添加至本列表最顶部（倒序排列），
-     格式：- **[vX.Y.Z](https://github.com/Felix5206/snapcrop/releases/tag/vX.Y.Z)** — YYYY-MM-DD + 核心变更要点。
-     该约定同时记录在 versions/VERSION_INDEX.md 使用约定中。 -->
+     格式：- **[vX.Y.Z](https://github.com/Felix5206/snapcrop/releases/tag/vX.Y.Z)** — YYYY-MM-DD + 核心变更要点。 -->
+
+- **[v2.0.0](https://github.com/Felix5206/snapcrop/releases/tag/v2.0.0)** — 2026-10-29
+  - HivisionIDPhotos 全量对齐：尺寸表、六色、四抠图模型
+  - 内置 MODNet 抠图模型，导入自动去背景（无需下载）
+  - 证件照换底（alpha 精确合成 + 魔棒兜底）、背景三模式
+  - 打印排版（6 寸 / 8 寸）、目标 KB 压缩、DPI 写入
+  - 美颜、参数化文字水印、人脸检测与自动构图
+  - 照片列表单张/批量命名
+  - 与 v1.0.0 完全独立：独立代码、资源、测试与文档
 
 - **[v1.0.0](https://github.com/Felix5206/snapcrop/releases/tag/v1.0.0)** — 2026-10-29
   - 首个正式版：照片批量 + 精准裁切双模式

@@ -9,7 +9,7 @@ window.SC = window.SC || {};
 (function (SC) {
   'use strict';
 
-  SC.VERSION = '1.0.0';
+  SC.VERSION = '2.0.0';
   SC.VERSION_LABEL = 'v' + SC.VERSION;
   SC.VERSION_NAME = '简裁 SnapCrop';
   SC.VERSION_DATE = '2026-10-29';

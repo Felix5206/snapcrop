@@ -24,30 +24,53 @@ window.SC = window.SC || {};
   SC.DPI_OPTIONS = [150, 200, 300, 350, 600];
 
   /** 分组顺序（未列出的分组自动排在最后） */
-  SC.GROUP_ORDER = ['常用证件照', '签证 / 出入境', '冲印照片', '社交与通用', '自定义'];
+  SC.GROUP_ORDER = ['常用证件照', '考试报名', '签证 / 出入境', '冲印照片', '社交与通用', '自定义'];
+
+  /**
+   * 「证件照处理」（批量）模式可见的分组：
+   * 仅证件照相关模板 + 自定义；冲印/社交等通用尺寸仅在「精准裁切」模式提供。
+   */
+  SC.BATCH_GROUPS = ['常用证件照', '考试报名', '签证 / 出入境', '自定义'];
+
+  /**
+   * 按模式取模板列表
+   * @param {'batch'|'crop'} mode
+   */
+  SC.presetsForMode = function (mode) {
+    var all = SC.allPresets();
+    if (mode === 'batch') {
+      return all.filter(function (p) { return SC.BATCH_GROUPS.indexOf(p.group) !== -1; });
+    }
+    return all;
+  };
 
   SC.PRESETS = [
-    /* ------------------------- 常用证件照 ------------------------- */
-    { id: 'cn-1cun', name: '一寸', group: '常用证件照', unit: 'mm', w: 25, h: 35, dpi: 300, desc: '295 × 413 px @300dpi，简历 / 社保 / 考试常用' },
-    { id: 'cn-1cun-small', name: '小一寸', group: '常用证件照', unit: 'mm', w: 22, h: 32, dpi: 300, desc: '260 × 378 px @300dpi' },
-    { id: 'cn-1cun-large', name: '大一寸', group: '常用证件照', unit: 'mm', w: 33, h: 48, dpi: 300, desc: '390 × 567 px @300dpi' },
-    { id: 'cn-2cun', name: '二寸', group: '常用证件照', unit: 'mm', w: 35, h: 49, dpi: 300, desc: '413 × 579 px @300dpi' },
-    { id: 'cn-2cun-small', name: '小二寸', group: '常用证件照', unit: 'mm', w: 35, h: 45, dpi: 300, desc: '413 × 531 px @300dpi' },
-    { id: 'cn-2cun-large', name: '大二寸', group: '常用证件照', unit: 'mm', w: 35, h: 53, dpi: 300, desc: '413 × 626 px @300dpi' },
-    { id: 'cn-idcard', name: '身份证', group: '常用证件照', unit: 'mm', w: 26, h: 32, dpi: 300, desc: '307 × 378 px @300dpi' },
-    { id: 'cn-driving', name: '驾驶证', group: '常用证件照', unit: 'mm', w: 22, h: 32, dpi: 300, desc: '260 × 378 px @300dpi' },
-    { id: 'cn-social', name: '社保卡', group: '常用证件照', unit: 'mm', w: 26, h: 32, dpi: 300, desc: '307 × 378 px @300dpi' },
-    { id: 'cn-teacher', name: '教师资格', group: '常用证件照', unit: 'mm', w: 25, h: 35, dpi: 300, desc: '小二寸免冠，底色以公告为准' },
+    /* -------- 常用证件照（像素尺寸对齐 HivisionIDPhotos size_list_CN） -------- */
+    { id: 'cn-1cun', name: '一寸', group: '常用证件照', unit: 'px', w: 295, h: 413, dpi: 300, desc: '25 × 35 mm，简历 / 考试常用' },
+    { id: 'cn-2cun', name: '二寸', group: '常用证件照', unit: 'px', w: 413, h: 626, dpi: 300, desc: '35 × 53 mm' },
+    { id: 'cn-1cun-small', name: '小一寸', group: '常用证件照', unit: 'px', w: 260, h: 378, dpi: 300, desc: '22 × 32 mm' },
+    { id: 'cn-2cun-small', name: '小二寸', group: '常用证件照', unit: 'px', w: 413, h: 531, dpi: 300, desc: '35 × 45 mm' },
+    { id: 'cn-1cun-large', name: '大一寸', group: '常用证件照', unit: 'px', w: 390, h: 567, dpi: 300, desc: '33 × 48 mm' },
+    { id: 'cn-2cun-large', name: '大二寸', group: '常用证件照', unit: 'px', w: 413, h: 626, dpi: 300, desc: '35 × 53 mm' },
+    { id: 'cn-5cun', name: '五寸', group: '常用证件照', unit: 'px', w: 1050, h: 1499, dpi: 300, desc: '89 × 127 mm' },
+    { id: 'cn-teacher', name: '教师资格证', group: '常用证件照', unit: 'px', w: 295, h: 413, dpi: 300, desc: '同一寸，底色以公告为准' },
+    { id: 'cn-social', name: '社保卡', group: '常用证件照', unit: 'px', w: 358, h: 441, dpi: 300, desc: '30 × 37 mm' },
+    { id: 'cn-e-driving', name: '电子驾驶证', group: '常用证件照', unit: 'px', w: 260, h: 378, dpi: 300, desc: '22 × 32 mm' },
+
+    /* --------------------------- 考试报名 --------------------------- */
+    { id: 'exam-gwy', name: '国家公务员考试', group: '考试报名', unit: 'px', w: 295, h: 413, dpi: 300, desc: '同一寸' },
+    { id: 'exam-kj', name: '初级会计考试', group: '考试报名', unit: 'px', w: 295, h: 413, dpi: 300, desc: '同一寸' },
+    { id: 'exam-cet', name: '英语四六级考试', group: '考试报名', unit: 'px', w: 144, h: 192, dpi: 300, desc: '144 × 192 px' },
+    { id: 'exam-ncre', name: '计算机等级考试', group: '考试报名', unit: 'px', w: 390, h: 567, dpi: 300, desc: '同大一寸' },
+    { id: 'exam-yjs', name: '研究生考试', group: '考试报名', unit: 'px', w: 531, h: 709, dpi: 300, desc: '45 × 60 mm' },
 
     /* ------------------------ 签证 / 出入境 ------------------------ */
-    { id: 'passport-cn', name: '中国护照', group: '签证 / 出入境', unit: 'mm', w: 33, h: 48, dpi: 300, desc: '390 × 567 px @300dpi' },
-    { id: 'visa-cn', name: '中国签证', group: '签证 / 出入境', unit: 'mm', w: 33, h: 48, dpi: 300, desc: '390 × 567 px @300dpi' },
-    { id: 'permit-hkmo', name: '往来港澳通行证', group: '签证 / 出入境', unit: 'mm', w: 33, h: 48, dpi: 300, desc: '390 × 567 px @300dpi' },
-    { id: 'permit-tw', name: '往来台湾通行证', group: '签证 / 出入境', unit: 'mm', w: 33, h: 48, dpi: 300, desc: '390 × 567 px @300dpi' },
-    { id: 'visa-us', name: '美国签证', group: '签证 / 出入境', unit: 'mm', w: 51, h: 51, dpi: 300, desc: '2 × 2 inch，600 × 600 px @300dpi' },
-    { id: 'visa-jp', name: '日本签证', group: '签证 / 出入境', unit: 'mm', w: 45, h: 45, dpi: 300, desc: '531 × 531 px @300dpi' },
-    { id: 'visa-schengen', name: '申根签证', group: '签证 / 出入境', unit: 'mm', w: 35, h: 45, dpi: 300, desc: '413 × 531 px @300dpi' },
-    { id: 'visa-uk', name: '英国签证', group: '签证 / 出入境', unit: 'mm', w: 35, h: 45, dpi: 300, desc: '413 × 531 px @300dpi' },
+    { id: 'visa-us', name: '美国签证', group: '签证 / 出入境', unit: 'px', w: 600, h: 600, dpi: 300, desc: '2 × 2 inch' },
+    { id: 'visa-jp', name: '日本签证', group: '签证 / 出入境', unit: 'px', w: 295, h: 413, dpi: 300, desc: '同一寸' },
+    { id: 'visa-kr', name: '韩国签证', group: '签证 / 出入境', unit: 'px', w: 413, h: 531, dpi: 300, desc: '同小二寸' },
+    { id: 'passport-cn', name: '中国护照', group: '签证 / 出入境', unit: 'px', w: 390, h: 567, dpi: 300, desc: '33 × 48 mm' },
+    { id: 'permit-hkmo', name: '往来港澳通行证', group: '签证 / 出入境', unit: 'px', w: 390, h: 567, dpi: 300, desc: '33 × 48 mm' },
+    { id: 'permit-tw', name: '往来台湾通行证', group: '签证 / 出入境', unit: 'px', w: 390, h: 567, dpi: 300, desc: '33 × 48 mm' },
 
     /* --------------------------- 冲印照片 --------------------------- */
     { id: 'print-3cun', name: '3 寸', group: '冲印照片', unit: 'mm', w: 63.5, h: 88.9, dpi: 300, inch: '2.5 × 3.5 英寸', desc: '750 × 1050 px @300dpi' },

@@ -1,10 +1,10 @@
-﻿; SnapCrop 简裁 — Inno Setup 安装包脚本
+﻿﻿; SnapCrop 简裁 — Inno Setup 安装包脚本
 ; 用法：由 scripts/build-installer.ps1 调用（自动传入 /DAPP_VERSION=x.y.z）
 ; 特性：用户可自选安装路径（默认免管理员的用户目录）、开始菜单快捷方式、
 ;       可选桌面图标、标准卸载程序、可选安装后启动。
 
 #ifndef APP_VERSION
-  #define APP_VERSION "1.0.0"
+  #define APP_VERSION "2.0.0"
 #endif
 
 #define APP_NAME "简裁 SnapCrop"

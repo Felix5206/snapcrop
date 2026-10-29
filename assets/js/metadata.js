@@ -533,6 +533,139 @@ window.SC = window.SC || {};
     }
   }
 
+  /* ============================ DPI 写入 ============================
+   * 对齐 HivisionIDPhotos（PIL save dpi=...）：
+   *   JPEG：优先改写 JFIF APP0 密度（units=1 点/英寸）；无 APP0 时注入/补写 EXIF DPI。
+   *   PNG ：写入/覆盖 pHYs 块（像素/米 = dpi ÷ 0.0254），紧跟 IHDR。
+   *   WebP：RIFF 无通用 DPI 字段，跳过（返回原字节）。
+   * 任何失败都原样返回输入字节。
+   */
+
+  /** 构造仅含 DPI 三件套（0x011A/0x011B/0x0128）的最小 TIFF（小端） */
+  function buildDpiTiff(dpi) {
+    var buf = new Uint8Array(8 + 2 + 3 * 12 + 4 + 16);
+    var dv = new DataView(buf.buffer);
+    buf[0] = 0x49; buf[1] = 0x49;                       // 'II'
+    dv.setUint16(2, 0x002A, true);
+    dv.setUint32(4, 8, true);                           // IFD0 偏移
+    var ifd = 8, dataStart = ifd + 2 + 36 + 4;
+    dv.setUint16(ifd, 3, true);                         // 3 个条目
+    function entry(i, tag, type, count, val) {
+      var e = ifd + 2 + i * 12;
+      dv.setUint16(e, tag, true); dv.setUint16(e + 2, type, true);
+      dv.setUint32(e + 4, count, true); dv.setUint32(e + 8, val, true);
+    }
+    entry(0, 0x011A, 5, 1, dataStart);                  // XResolution → RATIONAL
+    entry(1, 0x011B, 5, 1, dataStart + 8);              // YResolution
+    entry(2, 0x0128, 3, 1, 2);                          // ResolutionUnit = inch
+    dv.setUint32(ifd + 2 + 36, 0, true);                // next IFD
+    dv.setUint32(dataStart, dpi, true); dv.setUint32(dataStart + 4, 1, true);
+    dv.setUint32(dataStart + 8, dpi, true); dv.setUint32(dataStart + 12, 1, true);
+    return buf;
+  }
+
+  /** 原地补写 TIFF IFD0 中已存在的 DPI 条目（RATIONAL 值在其指向处） */
+  function patchTiffDpi(tiff, dpi) {
+    try {
+      var bo = String.fromCharCode(tiff[0], tiff[1]);
+      if (bo !== 'II' && bo !== 'MM') return false;
+      var le = (bo === 'II');
+      var dv = new DataView(tiff.buffer, tiff.byteOffset, tiff.byteLength);
+      if (dv.getUint16(2, le) !== 0x002A) return false;
+      var ifd = dv.getUint32(4, le);
+      var n = dv.getUint16(ifd, le), hit = false;
+      for (var i = 0; i < n; i++) {
+        var e = ifd + 2 + i * 12;
+        if (e + 12 > dv.byteLength) break;
+        var tag = dv.getUint16(e, le), type = dv.getUint16(e + 2, le);
+        if (tag === 0x0128 && type === 3) { dv.setUint16(e + 8, 2, le); hit = true; }
+        if ((tag === 0x011A || tag === 0x011B) && type === 5 && dv.getUint32(e + 4, le) === 1) {
+          var off = dv.getUint32(e + 8, le);
+          if (off + 8 <= dv.byteLength) {
+            dv.setUint32(off, dpi, le); dv.setUint32(off + 4, 1, le); hit = true;
+          }
+        }
+      }
+      return hit;
+    } catch (e) { return false; }
+  }
+
+  function writeJpegDpi(u8, dpi) {
+    if (u8[0] !== 0xFF || u8[1] !== 0xD8) return u8;
+    var off = 2;
+    while (off + 4 <= u8.length) {
+      if (u8[off] !== 0xFF) { off++; continue; }
+      var m = u8[off + 1];
+      if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { off += 2; continue; }
+      var len = (u8[off + 2] << 8) | u8[off + 3];
+      if (len < 2) return u8;
+      /* JFIF APP0：units=1（点/英寸），X/Ydensity=dpi */
+      if (m === 0xE0 && u8[off + 4] === 0x4A && u8[off + 5] === 0x46 &&
+          u8[off + 6] === 0x49 && u8[off + 7] === 0x46 && u8[off + 8] === 0x00) {
+        u8[off + 11] = 1;
+        u8[off + 12] = (dpi >> 8) & 0xFF; u8[off + 13] = dpi & 0xFF;
+        u8[off + 14] = (dpi >> 8) & 0xFF; u8[off + 15] = dpi & 0xFF;
+        return u8;
+      }
+      if (m === 0xDA) break;
+      off += 2 + len;
+    }
+    /* 无 JFIF：有 EXIF 则原地补 DPI，否则注入最小 DPI TIFF */
+    var t = sliceTiffFrom(u8);
+    if (t && patchTiffDpi(t, dpi)) return injectIntoJpeg(u8, t);
+    if (!t) return injectIntoJpeg(u8, buildDpiTiff(dpi));
+    return u8;
+  }
+
+  function writePngDpi(u8, dpi, crc32) {
+    if (typeof crc32 !== 'function') return u8;
+    if (u8[0] !== 0x89 || u8[1] !== 0x50 || u8[2] !== 0x4E || u8[3] !== 0x47) return u8;
+    var ppm = Math.round(dpi / 0.0254);
+    var off = 8;
+    while (off + 8 <= u8.length) {
+      var len = (u8[off] << 24) | (u8[off + 1] << 16) | (u8[off + 2] << 8) | u8[off + 3];
+      if (len < 0) return u8;
+      var typ = String.fromCharCode(u8[off + 4], u8[off + 5], u8[off + 6], u8[off + 7]);
+      if (typ === 'pHYs' && len === 9) {              /* 已存在：原地覆盖 */
+        var dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+        dv.setUint32(off + 8, ppm); dv.setUint32(off + 12, ppm); u8[off + 16] = 1;
+        var crc0 = crc32(u8.subarray(off + 4, off + 8 + 9)) >>> 0;
+        dv.setUint32(off + 8 + 9, crc0);
+        return u8;
+      }
+      if (typ === 'IDAT' || typ === 'IEND') break;
+      off += 12 + len;
+    }
+    /* 插入新 pHYs 块（IHDR 之后） */
+    var chunk = new Uint8Array(21);
+    var dv2 = new DataView(chunk.buffer);
+    dv2.setUint32(0, 9);
+    chunk.set([0x70, 0x48, 0x59, 0x73], 4);           // "pHYs"
+    dv2.setUint32(8, ppm); dv2.setUint32(12, ppm); chunk[16] = 1;
+    var crc = crc32(chunk.subarray(4, 17)) >>> 0;
+    dv2.setUint32(17, crc);
+    var ihdrEnd = 8 + 12 + 13;
+    var out = new Uint8Array(u8.length + 21);
+    out.set(u8.subarray(0, ihdrEnd), 0);
+    out.set(chunk, ihdrEnd);
+    out.set(u8.subarray(ihdrEnd), ihdrEnd + 21);
+    return out;
+  }
+
+  /**
+   * 把 DPI 写入导出字节。返回新字节或原引用（恒等比较可用）。
+   * @param u8 {Uint8Array} @param mime {string} @param dpi {number}
+   */
+  function writeDpi(u8, mime, dpi) {
+    try {
+      dpi = Math.round(dpi);
+      if (!u8 || !(dpi > 0)) return u8;
+      if (mime === 'image/jpeg') return writeJpegDpi(u8, dpi);
+      if (mime === 'image/png') return writePngDpi(u8, dpi, SC.zip && SC.zip.crc32);
+      return u8;                                       // WebP：无通用 DPI 字段
+    } catch (e) { return u8; }
+  }
+
   SC.metadata = {
     read: read,
     parse: parseExif,
@@ -542,6 +675,8 @@ window.SC = window.SC || {};
     fmtDate: fmtDate,
     sliceTiffFrom: sliceTiffFrom,
     patchExif: patchExif,
-    transplant: transplant
+    transplant: transplant,
+    writeDpi: writeDpi,
+    buildDpiTiff: buildDpiTiff
   };
 })(window.SC);

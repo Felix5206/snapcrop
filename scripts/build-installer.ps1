@@ -1,4 +1,4 @@
-﻿# SnapCrop Windows 安装包构建脚本（Inno Setup）
+﻿﻿# SnapCrop Windows 安装包构建脚本（Inno Setup）
 # 依赖：Python 3.8+、PyInstaller（pip install pyinstaller）、Inno Setup 6（winget install JRSoftware.InnoSetup）
 # 用法：在项目根目录执行 powershell -ExecutionPolicy Bypass -File scripts\build-installer.ps1
 # 产物：dist\SnapCrop-Setup-<版本>.exe（安装向导，用户可自选安装路径，含卸载程序）

@@ -1,10 +1,11 @@
 /*!
  * SnapCrop 简裁 - cropper.js
- * 「精准裁剪定位」模块：单张图片、固定裁剪框、原像素无损导出
+ * 「精准裁剪定位」模块：多照片、固定裁剪框（框不动图片动）、原像素无损导出
  *
- * 核心语义：裁剪框尺寸 = 输出像素尺寸。
- *   视图缩放（view）只影响屏幕显示，不改变输出；
- *   导出时用 drawImage 源矩形与目标矩形同尺寸，1:1 截取，不做重采样、不二次编码。
+ * 核心语义：
+ *   裁剪框在屏幕上固定居中，滚轮/滑杆缩放的是「框下裁剪区域」（cropW/cropH），
+ *   输出 = 框下区域的真实像素（1:1，不重采样、不二次编码），因此输出尺寸随缩放变化。
+ *   渲染时 fit 每次现算（fit = 视口 / 裁剪区域），框的屏幕尺寸始终保持适配视口。
  */
 window.SC = window.SC || {};
 
@@ -30,6 +31,11 @@ window.SC = window.SC || {};
 
   /* 最小裁切尺寸（源图像素）——防止误操作拖成无效区域 */
   var MIN_CROP = 16;
+
+  /* 缩放参数：与「证件照处理」模块（editor.js）对齐，保证两模式手感一致 */
+  var ZOOM_STEP = 1.08;     // 滚轮每格倍率
+  var ZOOM_KEY = 1.1;       // 键盘 +/- 倍率
+  var ZOOM_MAX_REL = 8;     // 相对整图的最大放大倍数（对应滑杆 800%）
   /* 8 个控制点：4 条边中点 + 4 个角 */
   var HANDLES = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
   /* 控制点命中半径（CSS px，触控时放宽） */
@@ -45,21 +51,30 @@ window.SC = window.SC || {};
     move: 'move'
   };
 
+  /*
+   * 多照片状态：每张图片独立保存裁剪区域（offX/offY/cropW/cropH，存浮点，显示与导出取整）。
+   * item: {id, file, name, type, size, bmp, iw, ih, thumb, offX, offY, cropW, cropH}
+   */
   var st = {
-    bmp: null, file: null, name: '', type: '', size: 0,
-    iw: 0, ih: 0,
-    cropW: 800, cropH: 800,
-    offX: 0, offY: 0,
+    items: [],
+    currentId: null,
     lock: true,
     allowBlank: false,
     bgFill: true,
-    view: 1,
     format: 'image/png'   // image/png | auto
   };
 
-  /* 最近一次渲染的裁切框屏幕矩形 / 当前悬停的控制点（供命中与光标使用） */
+  /* 最近一次渲染的裁切框屏幕矩形 / 缩放比 / 当前悬停的控制点（供命中与光标使用） */
   var frameGeo = null;
+  var lastFit = 1;
   var hoverHandle = null;
+
+  function cur() {
+    for (var i = 0; i < st.items.length; i++) {
+      if (st.items[i].id === st.currentId) return st.items[i];
+    }
+    return null;
+  }
 
   /* ======================= 纯计算（可单测） ======================= */
 
@@ -96,6 +111,27 @@ window.SC = window.SC || {};
       h: Math.max(1, Math.min(h, ih)),
       converged: true
     };
+  }
+
+  /**
+   * 滚轮/滑杆缩放：以区域中心为锚，按比例缩放裁剪区域（k<1 区域缩小 → 图片放大观感）。
+   * 每维边界：min = min(max(MIN_CROP, iw/ZOOM_MAX_REL), iw)，max = allowBlank ? MAX_SIDE : 整图。
+   * @param {{x:number,y:number,w:number,h:number}} box 当前裁剪区域（源图像素）
+   * @param {number} k 区域缩放倍率（作用于 w/h）
+   * @returns {{x:number,y:number,w:number,h:number}}
+   */
+  function zoomRegion(box, k, iw, ih, allowBlank) {
+    var minW = Math.min(Math.max(MIN_CROP, iw / ZOOM_MAX_REL), iw);
+    var minH = Math.min(Math.max(MIN_CROP, ih / ZOOM_MAX_REL), ih);
+    var maxW = allowBlank ? MAX_SIDE : iw;
+    var maxH = allowBlank ? MAX_SIDE : ih;
+    var kk = U.clamp(k, Math.max(minW / box.w, minH / box.h), Math.min(maxW / box.w, maxH / box.h));
+    var w = box.w * kk, h = box.h * kk;
+    /* 中心固定：区域围绕中心缩放 */
+    var x = box.x + (box.w - w) / 2;
+    var y = box.y + (box.h - h) / 2;
+    var p = clampOffset(x, y, w, h, iw, ih, allowBlank);
+    return { x: p.x, y: p.y, w: w, h: h };
   }
 
   /* ---------------- 裁切框控制点：几何与命中（纯计算，可单测） ---------------- */
@@ -252,25 +288,52 @@ window.SC = window.SC || {};
     ctx.closePath();
   }
 
+  /** 视口可用尺寸（CSS px） */
+  function availSize() {
+    var wrap = U.$('#crop-canvas-wrap');
+    if (!wrap) return { w: 120, h: 120 };
+    return {
+      w: Math.max(120, wrap.clientWidth - 40),
+      h: Math.max(120, wrap.clientHeight - 40)
+    };
+  }
+
+  /**
+   * 渲染缩放比：让「裁剪区域」刚好撑满视口（不设上限）。
+   * 框的屏幕尺寸恒定 → 「框不动」；滚轮改的是区域尺寸，图片相对框缩放 → 「图片动」。
+   */
+  function computeFit() {
+    var it = cur();
+    if (!it) return 1;
+    var a = availSize();
+    return Math.min(a.w / it.cropW, a.h / it.cropH);
+  }
+
+  /** 整图适配缩放（zoom 百分比基准：区域 = 整图时为 100%） */
+  function computeFitImg() {
+    var it = cur();
+    if (!it) return 1;
+    var a = availSize();
+    return Math.min(a.w / it.iw, a.h / it.ih);
+  }
+
+  /** 当前缩放百分比：100% = 裁剪区域恰好是整张图片 */
+  function zoomPct() {
+    var fitImg = computeFitImg();
+    if (!fitImg) return 100;
+    return computeFit() / fitImg * 100;
+  }
+
   /**
    * 裁切框在屏幕（CSS 像素）坐标系中的矩形。
    * 渲染与命中测试共用此函数，保证「所见即所点」。
    */
   function frameRect(cssW, cssH) {
-    var fw = st.cropW * st.view, fh = st.cropH * st.view;
+    var it = cur();
+    if (!it) return { x: 0, y: 0, w: 0, h: 0 };
+    var fit = computeFit();
+    var fw = it.cropW * fit, fh = it.cropH * fit;
     return { x: (cssW - fw) / 2, y: (cssH - fh) / 2, w: fw, h: fh };
-  }
-
-  /** 让裁剪框刚好适配视口；上限 100%（1:1 真实像素，不放大失真） */
-  function fitView() {
-    if (!st.bmp) return;
-    var wrap = U.$('#crop-canvas-wrap');
-    if (!wrap) return;
-    var availW = Math.max(120, wrap.clientWidth - 40);
-    var availH = Math.max(120, wrap.clientHeight - 40);
-    var s = Math.min(availW / st.cropW, availH / st.cropH);
-    st.view = U.clamp(s, 0.02, 1);
-    syncZoomUI();
   }
 
   function render() {
@@ -291,22 +354,24 @@ window.SC = window.SC || {};
     ctx.fillStyle = cssVar('--panel-2', '#f1f4f9');
     ctx.fillRect(0, 0, cssW, cssH);
 
-    if (!st.bmp) return;
+    var it = cur();
+    if (!it || !it.bmp) { frameGeo = null; renderOutPreview(); return; }
 
-    var vs = st.view;
+    var vs = computeFit();
+    lastFit = vs;
     var fr = frameRect(cssW, cssH);
     frameGeo = fr;                       // 供命中测试复用，避免重复计算
     var frameX = fr.x, frameY = fr.y, frameW = fr.w, frameH = fr.h;
-    var imgX = frameX - st.offX * vs, imgY = frameY - st.offY * vs;
+    var imgX = frameX - it.offX * vs, imgY = frameY - it.offY * vs;
 
     /* 只绘制视口可见部分对应的源区域 —— 超大图的关键优化 */
     var sx0 = Math.max(0, (0 - imgX) / vs), sy0 = Math.max(0, (0 - imgY) / vs);
-    var sx1 = Math.min(st.iw, (cssW - imgX) / vs), sy1 = Math.min(st.ih, (cssH - imgY) / vs);
+    var sx1 = Math.min(it.iw, (cssW - imgX) / vs), sy1 = Math.min(it.ih, (cssH - imgY) / vs);
     if (sx1 > sx0 && sy1 > sy0) {
       ctx.imageSmoothingEnabled = vs < 1;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(
-        st.bmp, sx0, sy0, sx1 - sx0, sy1 - sy0,
+        it.bmp, sx0, sy0, sx1 - sx0, sy1 - sy0,
         imgX + sx0 * vs, imgY + sy0 * vs, (sx1 - sx0) * vs, (sy1 - sy0) * vs
       );
     }
@@ -345,7 +410,7 @@ window.SC = window.SC || {};
     ctx.stroke();
 
     /* ---- 8 个控制点：4 角 + 4 边中点 ---- */
-    if (st.bmp && frameW >= 24 && frameH >= 24) {
+    if (frameW >= 24 && frameH >= 24) {
       var pts = handlePoints(fr);
       ctx.lineWidth = 1.5;
       HANDLES.forEach(function (key) {
@@ -366,11 +431,13 @@ window.SC = window.SC || {};
   /** 框内效果实时缩略（右侧输出预览） */
   function renderOutPreview() {
     var pc = U.$('#crop-preview-canvas');
-    if (!pc || !st.bmp) return;
+    if (!pc) return;
+    var it = cur();
+    if (!it || !it.bmp) { pc.width = pc.height = 0; return; }
     var box = pc.parentNode.getBoundingClientRect();
     var maxW = Math.max(80, box.width - 2), maxH = 180;
-    var k = Math.min(maxW / st.cropW, maxH / st.cropH, 1);
-    var w = Math.max(1, Math.round(st.cropW * k)), h = Math.max(1, Math.round(st.cropH * k));
+    var k = Math.min(maxW / it.cropW, maxH / it.cropH, 1);
+    var w = Math.max(1, Math.round(it.cropW * k)), h = Math.max(1, Math.round(it.cropH * k));
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     pc.style.width = w + 'px'; pc.style.height = h + 'px';
     pc.width = Math.round(w * dpr); pc.height = Math.round(h * dpr);
@@ -378,26 +445,28 @@ window.SC = window.SC || {};
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     if (st.bgFill || st.format === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); }
-    var r = computeExportRect(st.offX, st.offY, st.cropW, st.cropH, st.iw, st.ih);
+    var r = computeExportRect(Math.round(it.offX), Math.round(it.offY), Math.round(it.cropW), Math.round(it.cropH), it.iw, it.ih);
     if (!r.empty) {
       ctx.imageSmoothingEnabled = k < 1;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(st.bmp, r.sx, r.sy, r.sw, r.sh, r.dx * k, r.dy * k, r.sw * k, r.sh * k);
+      ctx.drawImage(it.bmp, r.sx, r.sy, r.sw, r.sh, r.dx * k, r.dy * k, r.sw * k, r.sh * k);
     }
   }
 
   function syncInfo() {
+    var it = cur();
     var set = function (id, txt) { var el = U.$(id); if (el) el.textContent = txt; };
-    set('#crop-img-info', st.bmp ? (st.iw + ' × ' + st.ih + ' px · ' + U.formatBytes(st.size)) : '未选择图片');
-    set('#crop-out-info', st.bmp ? (st.cropW + ' × ' + st.cropH + ' px（' + (st.cropW * st.cropH / 1e6).toFixed(2) + ' 百万像素）') : '—');
-    set('#crop-pos-info', st.bmp ? ('X ' + Math.round(st.offX) + ' , Y ' + Math.round(st.offY)) : '—');
+    set('#crop-img-info', it ? (it.iw + ' × ' + it.ih + ' px · ' + U.formatBytes(it.size)) : '未选择图片');
+    var cw = it ? Math.round(it.cropW) : 0, ch = it ? Math.round(it.cropH) : 0;
+    set('#crop-out-info', it ? (cw + ' × ' + ch + ' px（' + (cw * ch / 1e6).toFixed(2) + ' 百万像素）') : '—');
+    set('#crop-pos-info', it ? ('X ' + Math.round(it.offX) + ' , Y ' + Math.round(it.offY)) : '—');
 
     var warn = U.$('#crop-warn');
     if (warn) {
       var msg = '';
-      if (st.bmp && (st.iw < st.cropW || st.ih < st.cropH) && !st.allowBlank) {
+      if (it && (it.iw < cw || it.ih < ch) && !st.allowBlank) {
         msg = '图片小于裁剪框，请缩小裁剪尺寸或勾选「允许留白」。';
-      } else if (st.bmp && st.cropW * st.cropH > WARN_PIXELS) {
+      } else if (it && cw * ch > WARN_PIXELS) {
         msg = '输出尺寸较大，导出时会占用较多内存。';
       }
       warn.textContent = msg;
@@ -407,8 +476,18 @@ window.SC = window.SC || {};
 
   function syncZoomUI() {
     var z = U.$('#crop-zoom'), v = U.$('#crop-zoom-val');
-    if (z) z.value = Math.round(st.view * 100);
-    if (v) v.textContent = Math.round(st.view * 100) + '%';
+    var it = cur();
+    var pct = it ? Math.round(zoomPct()) : 100;
+    /* 以「区域 = 整图」为 100%（与批量模式 zoom 语义一致），滑杆显示区间 100–800 */
+    if (z) z.value = U.clamp(pct, 100, 800);
+    if (v) v.textContent = pct + '%';
+  }
+
+  function syncSizeInputs() {
+    var it = cur();
+    var wi = U.$('#crop-w'), hi = U.$('#crop-h');
+    if (wi) wi.value = it ? Math.round(it.cropW) : '';
+    if (hi) hi.value = it ? Math.round(it.cropH) : '';
   }
 
   function renderAll() {
@@ -417,127 +496,255 @@ window.SC = window.SC || {};
     render();
   }
 
+  /* ============================ 照片列表 ============================ */
+
+  function renderList() {
+    var box = U.$('#crop-photo-list');
+    if (!box) return;
+    box.innerHTML = '';
+
+    st.items.forEach(function (it) {
+      var nameEl = U.el('div', { class: 'photo__name', title: it.name + '（双击重命名）', text: it.name });
+      nameEl.addEventListener('dblclick', function (e) {
+        e.stopPropagation();
+        startRename(row, it);
+      });
+      var row = U.el('li', {
+        class: 'photo' + (it.id === st.currentId ? ' is-active' : ''),
+        'data-id': it.id,
+        onclick: function () { selectPhoto(it.id); }
+      }, [
+        U.el('img', { class: 'photo__thumb', src: it.thumb, alt: it.name }),
+        U.el('div', { class: 'photo__meta' }, [
+          nameEl,
+          U.el('div', { class: 'photo__sub', text: it.iw + '×' + it.ih + ' · ' + U.formatBytes(it.size) })
+        ]),
+        U.el('div', { class: 'photo__right' }, [
+          U.el('button', {
+            class: 'icon-btn icon-btn--sm', title: '移除',
+            onclick: function (e) { e.stopPropagation(); removePhoto(it.id); }
+          }, [U.el('span', { text: '×' })])
+        ])
+      ]);
+      box.appendChild(row);
+    });
+
+    var empty = U.$('#crop-empty');
+    if (empty) empty.hidden = st.items.length > 0;
+  }
+
+  /** 重命名：保留原扩展名，trim 后为空则不生效。返回是否成功。 */
+  function renameItem(id, newName) {
+    var it = null;
+    for (var i = 0; i < st.items.length; i++) if (st.items[i].id === id) it = st.items[i];
+    if (!it) return false;
+    var nn = (newName == null ? '' : String(newName)).trim();
+    if (!nn) return false;
+    var m = /\.[A-Za-z0-9]{1,8}$/.exec(it.name);
+    var ext = m ? m[0] : '';
+    nn = nn.replace(/\.[A-Za-z0-9]{1,8}$/, '');   // 忽略用户输入的扩展名，保留原扩展名
+    if (!nn) return false;
+    it.name = nn + ext;
+    return true;
+  }
+
+  /** 双击照片名 → 原位替换为输入框；Enter/失焦提交，Esc 取消 */
+  function startRename(row, it) {
+    var meta = row.querySelector('.photo__meta');
+    var nameEl = row.querySelector('.photo__name');
+    if (!meta || !nameEl) return;
+    var input = U.el('input', { class: 'photo__rename', type: 'text', value: U.baseName(it.name) });
+    meta.replaceChild(input, nameEl);
+    input.focus();
+    input.select();
+    var done = false;
+    function commit() {
+      if (done) return;
+      done = true;
+      if (renameItem(it.id, input.value)) {
+        var cur2 = cur();
+        if (cur2 && cur2.id === it.id) {
+          var nameBox = U.$('#crop-file-name');
+          if (nameBox) { nameBox.textContent = it.name; nameBox.title = it.name; }
+        }
+        U.toast('已重命名为 ' + it.name, 'success');
+      }
+      renderList();
+    }
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); done = true; renderList(); }
+      e.stopPropagation();
+    });
+    input.addEventListener('blur', commit);
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+    input.addEventListener('dblclick', function (e) { e.stopPropagation(); });
+  }
+
+  /** 批量命名：{n}=序号、{name}=原名，保留各自扩展名 */
+  function batchRename() {
+    if (!st.items.length) { U.toast('请先导入照片', 'error'); return; }
+    var tpl = prompt('命名规则：{n} = 序号，{name} = 原名\n例如：裁剪_{n}', '{name}');
+    if (tpl == null) return;
+    st.items.forEach(function (it, i) { it.name = U.batchName(tpl, it.name, i); });
+    var c2 = cur();
+    var nameEl = U.$('#crop-file-name');
+    if (c2 && nameEl) { nameEl.textContent = c2.name; nameEl.title = c2.name; }
+    renderList();
+    U.toast('已批量命名 ' + st.items.length + ' 张照片', 'success');
+  }
+
+  function selectPhoto(id) {
+    st.currentId = id;
+    var it = cur();
+    var empty = U.$('#crop-empty');
+    if (empty) empty.hidden = !!it;
+    var nameEl = U.$('#crop-file-name');
+    if (nameEl) { nameEl.textContent = it ? it.name : '未选择图片'; nameEl.title = it ? it.name : ''; }
+    syncSizeInputs();
+
+    /* EXIF 元数据（懒加载，失败不影响裁剪） */
+    if (SC.metadata) {
+      if (it) {
+        SC.metadata.read(it.file, { name: it.name, type: it.type, size: it.size, width: it.iw, height: it.ih })
+          .then(function (data) {
+            var c2 = cur();
+            if (!c2 || c2.id !== it.id) return;
+            SC.metadata.renderInto(U.$('#crop-meta-body'), data);
+          });
+      } else {
+        SC.metadata.renderInto(U.$('#crop-meta-body'), null);
+      }
+    }
+
+    renderList();
+    renderAll();
+  }
+
+  function removePhoto(id) {
+    var idx = -1;
+    for (var i = 0; i < st.items.length; i++) if (st.items[i].id === id) idx = i;
+    if (idx < 0) return;
+    var it = st.items[idx];
+    if (it.bmp) SC.importer.release(it.bmp);
+    st.items.splice(idx, 1);
+    if (st.currentId === id) {
+      var next = st.items[idx] || st.items[idx - 1] || null;
+      st.currentId = null;
+      if (next) selectPhoto(next.id);
+      else selectPhoto(null);
+    } else {
+      renderList();
+      renderAll();
+    }
+  }
+
+  function clearAll() {
+    st.items.forEach(function (it) { if (it.bmp) SC.importer.release(it.bmp); });
+    st.items = [];
+    st.currentId = null;
+    var input = U.$('#crop-file-input');
+    if (input) input.value = '';
+    selectPhoto(null);
+    U.toast('已清空照片列表');
+  }
+
   /* ============================ 交互 ============================ */
 
   function setCropSize(w, h, keepRatioFrom) {
+    var it = cur();
+    if (!it) return;
     var nw = sanitizeSize(w), nh = sanitizeSize(h);
     if (nw === null || nh === null) return;   // 非法输入：保留上一次有效尺寸
-    w = nw; h = nh;
-    if (!st.bmp) { st.cropW = w; st.cropH = h; syncInfo(); return; }
-    w = Math.max(1, Math.round(w));
-    h = Math.max(1, Math.round(h));
+    w = Math.max(1, Math.round(nw));
+    h = Math.max(1, Math.round(nh));
     /* 最小裁切尺寸（图片更小时以图片为准） */
-    var minW = st.bmp ? Math.min(MIN_CROP, st.iw) : 1;
-    var minH = st.bmp ? Math.min(MIN_CROP, st.ih) : 1;
+    var minW = Math.min(MIN_CROP, it.iw), minH = Math.min(MIN_CROP, it.ih);
     if (w < minW) w = minW;
     if (h < minH) h = minH;
     if (st.lock && keepRatioFrom) {
-      var ratio = st.cropW / st.cropH;
+      var ratio = it.cropW / it.cropH;
       if (keepRatioFrom === 'w') h = Math.max(1, Math.round(w / ratio));
       else w = Math.max(1, Math.round(h * ratio));
     }
     if (!st.allowBlank) {
-      var c = convergeCropSize(w, h, st.iw, st.ih, st.lock);
+      var c = convergeCropSize(w, h, it.iw, it.ih, st.lock);
       if (c.converged) {
         w = c.w; h = c.h;
         U.toast('图片尺寸不足，裁剪框已自动收敛为 ' + w + ' × ' + h, 'error');
       }
     }
-    st.cropW = Math.max(1, Math.min(w, MAX_SIDE));
-    st.cropH = Math.max(1, Math.min(h, MAX_SIDE));
-    var p = clampOffset(st.offX, st.offY, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
-    st.offX = p.x; st.offY = p.y;
-    var wi = U.$('#crop-w'), hi = U.$('#crop-h');
-    if (wi) wi.value = st.cropW;
-    if (hi) hi.value = st.cropH;
+    it.cropW = Math.max(1, Math.min(w, MAX_SIDE));
+    it.cropH = Math.max(1, Math.min(h, MAX_SIDE));
+    var p = clampOffset(it.offX, it.offY, it.cropW, it.cropH, it.iw, it.ih, st.allowBlank);
+    it.offX = p.x; it.offY = p.y;
+    syncSizeInputs();
     renderAll();
   }
 
-  async function loadFile(file) {
-    if (!file) return;
-    if (!SC.importer.isSupported(file)) {
-      U.toast('不支持的文件格式（HEIC 请先转为 JPG）', 'error');
+  /** 缩放图片（= 缩放裁剪区域，中心固定） */
+  function applyZoom(k) {
+    var it = cur();
+    if (!it) return;
+    var nb = zoomRegion({ x: it.offX, y: it.offY, w: it.cropW, h: it.cropH }, k, it.iw, it.ih, st.allowBlank);
+    it.offX = nb.x; it.offY = nb.y; it.cropW = nb.w; it.cropH = nb.h;
+    syncSizeInputs();
+    renderAll();
+  }
+
+  /** 复位：裁剪区域恢复为整张图片（100%） */
+  function resetRegion() {
+    var it = cur();
+    if (!it) return;
+    it.cropW = it.iw; it.cropH = it.ih; it.offX = 0; it.offY = 0;
+    syncSizeInputs();
+    renderAll();
+  }
+
+  async function loadFiles(files) {
+    if (!files || !files.length) return;
+    var res = await SC.importer.importFiles(files);
+    if (!res.items.length) {
+      U.toast('没有可识别的图片（HEIC 请先转换为 JPG）', 'error');
       return;
     }
-    U.toast('正在读取图片…');
-    var bmp;
-    try {
-      bmp = await SC.importer.decode(file);
-    } catch (e) {
-      U.toast('图片解码失败', 'error');
-      return;
-    }
-    var iw = SC.importer.bmpWidth(bmp), ih = SC.importer.bmpHeight(bmp);
-    if (!iw || !ih) { U.toast('无法读取图片尺寸', 'error'); return; }
-
-    if (st.bmp && st.bmp !== bmp) SC.importer.release(st.bmp);
-    st.bmp = bmp; st.file = file; st.name = file.name; st.type = file.type || ''; st.size = file.size || 0;
-    st.iw = iw; st.ih = ih;
-
-    /* 大图保护：初始裁剪框不超过图片，且默认取「图片内最大可裁区域」的 100% 起点 */
-    var c = convergeCropSize(st.cropW, st.cropH, iw, ih, st.lock);
-    if (c.converged) { st.cropW = c.w; st.cropH = c.h; }
-
-    st.offX = Math.max(0, Math.round((iw - st.cropW) / 2));
-    st.offY = Math.max(0, Math.round((ih - st.cropH) / 2));
-
-    /* EXIF 元数据（懒加载，失败不影响裁剪） */
-    if (SC.metadata) {
-      SC.metadata.read(file, { name: file.name, type: file.type, size: file.size, width: iw, height: ih })
-        .then(function (data) {
-          if (st.name !== file.name) return;
-          SC.metadata.renderInto(U.$('#crop-meta-body'), data);
-        });
-    }
-
-    var empty = U.$('#crop-empty');
-    if (empty) empty.hidden = true;
-    var nameEl = U.$('#crop-file-name');
-    if (nameEl) { nameEl.textContent = st.name; nameEl.title = st.name; }
-    var wi = U.$('#crop-w'), hi = U.$('#crop-h');
-    if (wi) wi.value = st.cropW;
-    if (hi) hi.value = st.cropH;
-
-    fitView();
-    renderAll();
-    U.toast('已载入 ' + iw + ' × ' + ih + ' 图片', 'success');
+    var first = null;
+    res.items.forEach(function (it) {
+      /* 初始裁剪区域 = 整张图片（100%） */
+      it.cropW = it.iw; it.cropH = it.ih;
+      it.offX = 0; it.offY = 0;
+      st.items.push(it);
+      if (!first) first = it;
+    });
+    selectPhoto(first.id);
+    U.toast('已导入 ' + res.items.length + ' 张' +
+      (res.skipped ? '，跳过 ' + res.skipped + ' 个不支持的文件' : ''), 'success');
   }
 
-  function cancelAll() {
-    if (st.bmp) SC.importer.release(st.bmp);
-    st.bmp = null; st.file = null; st.name = ''; st.type = ''; st.size = 0; st.iw = 0; st.ih = 0;
-    st.offX = 0; st.offY = 0; st.view = 1;
-    var empty = U.$('#crop-empty');
-    if (empty) empty.hidden = false;
-    var nameEl = U.$('#crop-file-name');
-    if (nameEl) nameEl.textContent = '未选择图片';
-    if (SC.metadata) SC.metadata.renderInto(U.$('#crop-meta-body'), null);
-    var input = U.$('#crop-file-input');
-    if (input) input.value = '';
-    renderAll();
-    U.toast('已取消，可重新选择图片');
-  }
+  /* 兼容旧调用：单文件入口 */
+  function loadFile(file) { return loadFiles(file ? [file] : []); }
 
-  function resolveFormat() {
+  function resolveFormat(it) {
     if (st.format === 'auto') {
-      if (/png/i.test(st.type)) return { mime: 'image/png', ext: 'png', q: undefined };
-      if (/webp/i.test(st.type)) return { mime: 'image/webp', ext: 'webp', q: 1 };
-      if (/jpe?g/i.test(st.type)) return { mime: 'image/jpeg', ext: 'jpg', q: 1 };
+      if (/png/i.test(it.type)) return { mime: 'image/png', ext: 'png', q: undefined };
+      if (/webp/i.test(it.type)) return { mime: 'image/webp', ext: 'webp', q: 1 };
+      if (/jpe?g/i.test(it.type)) return { mime: 'image/jpeg', ext: 'jpg', q: 1 };
       return { mime: 'image/png', ext: 'png', q: undefined };
     }
     return { mime: 'image/png', ext: 'png', q: undefined };
   }
 
   async function confirmExport() {
-    if (!st.bmp) { U.toast('请先选择图片', 'error'); return; }
-    var W = st.cropW, H = st.cropH;
+    var it = cur();
+    if (!it || !it.bmp) { U.toast('请先选择图片', 'error'); return; }
+    var W = Math.round(it.cropW), H = Math.round(it.cropH);
     if (W > MAX_SIDE || H > MAX_SIDE) {
       U.toast('裁剪尺寸超出浏览器 Canvas 上限（' + MAX_SIDE + 'px）', 'error');
       return;
     }
     if (W * H > WARN_PIXELS && !confirm('输出为 ' + W + ' × ' + H + '（约 ' + (W * H / 1e6).toFixed(1) + ' 百万像素），可能占用较多内存，是否继续？')) return;
 
-    var fmt = resolveFormat();
+    var fmt = resolveFormat(it);
     var canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext('2d');
@@ -545,10 +752,10 @@ window.SC = window.SC || {};
     if (fmt.mime === 'image/jpeg' || st.bgFill) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); }
 
     /* 源矩形与目标矩形尺寸恒等 —— 原像素 1:1 截取，无缩放、无重采样 */
-    var r = computeExportRect(st.offX, st.offY, W, H, st.iw, st.ih);
+    var r = computeExportRect(Math.round(it.offX), Math.round(it.offY), W, H, it.iw, it.ih);
     if (!r.empty) {
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(st.bmp, r.sx, r.sy, r.sw, r.sh, r.dx, r.dy, r.sw, r.sh);
+      ctx.drawImage(it.bmp, r.sx, r.sy, r.sw, r.sh, r.dx, r.dy, r.sw, r.sh);
     }
 
     var blob = await new Promise(function (resolve) {
@@ -558,11 +765,11 @@ window.SC = window.SC || {};
     if (!blob) { U.toast('导出失败，请尝试缩小裁剪尺寸', 'error'); return; }
 
     /* 元数据移植：Canvas 重绘会剥离 EXIF，这里把原图的 EXIF/TIFF 块整块搬入导出文件
-       （与「照片批量」导出保持一致），失败时保持原样，不影响图像输出。 */
+       （与「证件照处理」导出保持一致），失败时保持原样，不影响图像输出。 */
     var bytes = await blobToBytes(blob);
-    if (st.file && SC.metadata && SC.metadata.transplant) {
+    if (it.file && SC.metadata && SC.metadata.transplant) {
       try {
-        var srcBytes = await blobToBytes(st.file);
+        var srcBytes = await blobToBytes(it.file);
         var patched = SC.metadata.transplant(srcBytes, bytes, fmt.mime, W, H);
         if (patched !== bytes) {
           bytes = patched;
@@ -571,7 +778,7 @@ window.SC = window.SC || {};
       } catch (e) { /* 移植失败不影响导出 */ }
     }
 
-    var outName = U.safeName(U.baseName(st.name) + '_crop_' + W + 'x' + H) + '.' + fmt.ext;
+    var outName = U.safeName(U.baseName(it.name) + '_crop_' + W + 'x' + H) + '.' + fmt.ext;
     U.downloadBlob(blob, outName);
     U.toast('已导出 ' + W + ' × ' + H + '（' + U.formatBytes(blob.size) + '）', 'success');
   }
@@ -605,32 +812,32 @@ window.SC = window.SC || {};
     return n;
   }
 
-  /** 把当前裁切框写回状态并同步界面（拖拽缩放用） */
-  function applyBox(box) {
-    st.cropW = Math.max(1, Math.round(box.w));
-    st.cropH = Math.max(1, Math.round(box.h));
-    var p = clampOffset(box.x, box.y, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
-    st.offX = p.x; st.offY = p.y;
-    var wi = U.$('#crop-w'), hi = U.$('#crop-h');
-    if (wi) wi.value = st.cropW;
-    if (hi) hi.value = st.cropH;
+  /** 把控制点拖拽结果写回当前照片并同步界面 */
+  function applyBox(it, box) {
+    it.cropW = Math.max(1, Math.round(box.w));
+    it.cropH = Math.max(1, Math.round(box.h));
+    var p = clampOffset(box.x, box.y, it.cropW, it.cropH, it.iw, it.ih, st.allowBlank);
+    it.offX = p.x; it.offY = p.y;
+    syncSizeInputs();
   }
 
   function bindCanvas() {
     var cv = U.$('#crop-canvas');
     if (!cv) return;
 
-    /* drag: {mode:'move'|handle, sx, sy, box} */
+    /* drag: {mode:'move'|handle, sx, sy, box, fit} */
     var drag = null;
 
     cv.addEventListener('pointerdown', function (e) {
-      if (!st.bmp) return;
+      var it = cur();
+      if (!it) return;
       var pt = localPoint(cv, e.clientX, e.clientY);
       var hit = hitTest(pt.x, pt.y, frameGeo) || 'move';
       drag = {
         mode: hit,
         sx: e.clientX, sy: e.clientY,
-        box: { x: st.offX, y: st.offY, w: st.cropW, h: st.cropH }
+        fit: lastFit,
+        box: { x: it.offX, y: it.offY, w: it.cropW, h: it.cropH }
       };
       cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
       cv.classList.add('is-dragging');
@@ -639,7 +846,8 @@ window.SC = window.SC || {};
     });
 
     cv.addEventListener('pointermove', function (e) {
-      if (!st.bmp) return;
+      var it = cur();
+      if (!it) return;
 
       if (!drag) {
         /* 悬停反馈：控制点上切换指针形状 */
@@ -650,19 +858,20 @@ window.SC = window.SC || {};
         return;
       }
 
-      var dx = (e.clientX - drag.sx) / st.view;   // 换算回源图像素
-      var dy = (e.clientY - drag.sy) / st.view;
+      var dx = (e.clientX - drag.sx) / drag.fit;   // 换算回源图像素
+      var dy = (e.clientY - drag.sy) / drag.fit;
 
       if (drag.mode === 'move') {
-        /* 按住框内（或框外）整体拖动 → 移动裁切框位置 */
-        st.offX = drag.box.x + dx;
-        st.offY = drag.box.y + dy;
-        var p = clampOffset(st.offX, st.offY, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
-        st.offX = p.x; st.offY = p.y;
+        /* 框不动，图片动：拖动 = 图片跟随指针方向移动
+           （offX 是裁剪区域在源图上的位置，图片右移 = 区域左移，故取反） */
+        it.offX = drag.box.x - dx;
+        it.offY = drag.box.y - dy;
+        var p = clampOffset(it.offX, it.offY, it.cropW, it.cropH, it.iw, it.ih, st.allowBlank);
+        it.offX = p.x; it.offY = p.y;
       } else {
         /* 控制点 → 自由缩放，受边界与最小尺寸约束 */
-        applyBox(resizeBox(drag.mode, drag.box, dx, dy,
-          { iw: st.iw, ih: st.ih },
+        applyBox(it, resizeBox(drag.mode, drag.box, dx, dy,
+          { iw: it.iw, ih: it.ih },
           { lock: st.lock, min: MIN_CROP }));
       }
       scheduleRender();
@@ -680,12 +889,56 @@ window.SC = window.SC || {};
     });
 
     cv.addEventListener('wheel', function (e) {
-      if (!st.bmp) return;
+      if (!cur()) return;
       e.preventDefault();
-      var next = st.view * (e.deltaY < 0 ? 1.1 : 1 / 1.1);
-      st.view = U.clamp(next, 0.02, 4);
-      syncZoomUI(); render();
+      /* 与批量模式一致：倍率 ZOOM_STEP；滚轮上 = 图片放大 = 区域缩小 */
+      applyZoom(e.deltaY < 0 ? 1 / ZOOM_STEP : ZOOM_STEP);
     }, { passive: false });
+
+    /* 双击复位：裁剪区域恢复为整张图片（对齐批量模式双击重置行为） */
+    cv.addEventListener('dblclick', function () {
+      if (!cur()) return;
+      resetRegion();
+    });
+
+    /* 键盘交互：与批量模式一致（方向键移动 1px / Shift 10px，+/- 缩放，[ ] 切换照片，Enter 导出） */
+    document.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      var cropPane = U.$('#mode-crop');
+      if (!cropPane || cropPane.hidden) return;
+      var it = cur();
+      if (!it) return;
+      var stepPx = e.shiftKey ? 10 : 1;
+      var handled = true;
+      /* 方向键 = 移动图片（与指针拖拽同向）：图片右移 = 裁剪区域左移 */
+      switch (e.key) {
+        case 'ArrowLeft': it.offX += stepPx; break;
+        case 'ArrowRight': it.offX -= stepPx; break;
+        case 'ArrowUp': it.offY += stepPx; break;
+        case 'ArrowDown': it.offY -= stepPx; break;
+        case '+': case '=':
+          applyZoom(1 / ZOOM_KEY);
+          return;
+        case '-': case '_':
+          applyZoom(ZOOM_KEY);
+          return;
+        case '[': case ']':
+          var idx = st.items.indexOf(it);
+          var next = st.items[U.clamp(idx + (e.key === '[' ? -1 : 1), 0, st.items.length - 1)];
+          if (next && next.id !== it.id) selectPhoto(next.id);
+          return;
+        case 'Enter':
+          confirmExport();
+          return;
+        default: handled = false;
+      }
+      if (!handled) return;
+      e.preventDefault();
+      var p = clampOffset(it.offX, it.offY, it.cropW, it.cropH, it.iw, it.ih, st.allowBlank);
+      it.offX = p.x; it.offY = p.y;
+      scheduleRender();
+    });
   }
 
   function bind() {
@@ -693,29 +946,28 @@ window.SC = window.SC || {};
     if (input) {
       input.accept = SC.importer.ACCEPT_ATTR;
       input.addEventListener('change', function () {
-        if (this.files && this.files[0]) loadFile(this.files[0]);
+        if (this.files && this.files.length) loadFiles(this.files);
+        this.value = '';
       });
     }
 
     var bindClick = function (id, fn) { var el = U.$(id); if (el) el.addEventListener('click', fn); };
-    bindClick('#crop-btn-upload', function () { input && input.click(); });
     bindClick('#crop-btn-reselect', function () { input && input.click(); });
     bindClick('#crop-dropzone', function () { input && input.click(); });
     bindClick('#crop-empty', function () { input && input.click(); });
-    bindClick('#crop-btn-cancel', cancelAll);
+    bindClick('#crop-btn-cancel', clearAll);
+    bindClick('#crop-btn-batch-rename', batchRename);
     bindClick('#crop-btn-confirm', confirmExport);
-    bindClick('#crop-btn-fit', function () { fitView(); render(); });
-    bindClick('#crop-btn-reset', function () {
-      if (!st.bmp) return;
-      st.offX = Math.max(0, Math.round((st.iw - st.cropW) / 2));
-      st.offY = Math.max(0, Math.round((st.ih - st.cropH) / 2));
-      fitView(); renderAll();
-    });
+    bindClick('#crop-btn-reset', resetRegion);
 
     /* 尺寸输入 */
     var wi = U.$('#crop-w'), hi = U.$('#crop-h');
-    if (wi) wi.addEventListener('input', U.debounce(function () { setCropSize(parseFloat(this.value), st.cropH, 'w'); }, 240));
-    if (hi) hi.addEventListener('input', U.debounce(function () { setCropSize(st.cropW, parseFloat(this.value), 'h'); }, 240));
+    if (wi) wi.addEventListener('input', U.debounce(function () {
+      var it = cur(); if (it) setCropSize(parseFloat(this.value), it.cropH, 'w');
+    }, 240));
+    if (hi) hi.addEventListener('input', U.debounce(function () {
+      var it = cur(); if (it) setCropSize(it.cropW, parseFloat(this.value), 'h');
+    }, 240));
 
     /* 快捷比例 */
     var box = U.$('#crop-ratios');
@@ -723,15 +975,17 @@ window.SC = window.SC || {};
       RATIOS.forEach(function (r) {
         box.appendChild(U.el('button', {
           class: 'chip', type: 'button', text: r.label,
-          onclick: function () { setCropSize(Math.round(st.cropH * r.v), st.cropH, 'h'); }
+          onclick: function () {
+            var it = cur(); if (it) setCropSize(Math.round(it.cropH * r.v), it.cropH, 'h');
+          }
         }));
       });
     }
 
-    /* 套用尺寸模板：复用「照片批量」的模板库，避免两套尺寸配置 */
+    /* 套用尺寸模板：复用模板库（crop 模式含全部分组：证件照 + 冲印 + 社交通用） */
     var pick = U.$('#crop-preset-pick');
     if (pick && SC.allPresets) {
-      SC.groupPresets(SC.allPresets()).forEach(function (g) {
+      SC.groupPresets(SC.presetsForMode ? SC.presetsForMode('crop') : SC.allPresets()).forEach(function (g) {
         var og = U.el('optgroup', { label: g.group });
         g.items.forEach(function (p) {
           var lb = SC.presetLabel(p, p.dpi || 300);
@@ -762,8 +1016,11 @@ window.SC = window.SC || {};
     var blank = U.$('#crop-allow-blank');
     if (blank) blank.addEventListener('change', function () {
       st.allowBlank = this.checked;
-      var p = clampOffset(st.offX, st.offY, st.cropW, st.cropH, st.iw, st.ih, st.allowBlank);
-      st.offX = p.x; st.offY = p.y;
+      var it = cur();
+      if (it) {
+        var p = clampOffset(it.offX, it.offY, it.cropW, it.cropH, it.iw, it.ih, st.allowBlank);
+        it.offX = p.x; it.offY = p.y;
+      }
       renderAll();
     });
 
@@ -775,11 +1032,15 @@ window.SC = window.SC || {};
 
     var zoom = U.$('#crop-zoom');
     if (zoom) zoom.addEventListener('input', function () {
-      st.view = U.clamp(parseFloat(this.value) / 100, 0.02, 4);
-      syncZoomUI(); render();
+      /* 滑杆百分比：100% = 区域恰为整图；目标百分比 → 区域缩放倍率 k = 当前% / 目标% */
+      var it = cur();
+      if (!it) return;
+      var target = parseFloat(this.value);
+      var curPct = zoomPct();
+      if (target > 0 && curPct > 0) applyZoom(curPct / target);
     });
 
-    /* 拖拽上传 */
+    /* 拖拽上传（可多选） */
     var dz = U.$('#crop-dropzone');
     if (dz) {
       ['dragenter', 'dragover'].forEach(function (evt) {
@@ -789,7 +1050,7 @@ window.SC = window.SC || {};
         dz.addEventListener(evt, function (e) { e.preventDefault(); dz.classList.remove('is-over'); });
       });
       dz.addEventListener('drop', function (e) {
-        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
       });
     }
 
@@ -802,7 +1063,9 @@ window.SC = window.SC || {};
     var lock = U.$('#crop-lock');
     if (lock) lock.classList.add('is-active');
     if (SC.metadata) SC.metadata.renderInto(U.$('#crop-meta-body'), null);
+    renderList();
     syncInfo();
+    syncSizeInputs();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -810,6 +1073,7 @@ window.SC = window.SC || {};
 
   SC.cropper = {
     state: st,
+    cur: cur,
     MIN_CROP: MIN_CROP,
     HANDLES: HANDLES,
     sanitizeSize: sanitizeSize,
@@ -819,10 +1083,16 @@ window.SC = window.SC || {};
     handlePoints: handlePoints,
     hitTest: hitTest,
     resizeBox: resizeBox,
+    zoomRegion: zoomRegion,
     frameRect: frameRect,
     render: render,
+    loadFiles: loadFiles,
     loadFile: loadFile,
-    cancel: cancelAll,
+    selectPhoto: selectPhoto,
+    removePhoto: removePhoto,
+    renameItem: renameItem,
+    clearAll: clearAll,
+    cancel: clearAll,
     exportCrop: confirmExport
   };
 })(window.SC);

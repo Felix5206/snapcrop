@@ -32,13 +32,13 @@
   <div class="topbar__left">
     <img class="logo" src="assets/brand/icon.svg" alt="SnapCrop">
     <div class="brand">
-      <strong>简裁 <em class="brand__ver" data-app-version>v1.0.0</em></strong>
+      <strong>简裁 <em class="brand__ver" data-app-version>v2.0.0</em></strong>
       <span>SnapCrop · 本地照片裁切</span>
     </div>
   </div>
 
   <div class="seg" role="tablist" aria-label="功能模式">
-    <button class="seg__btn is-active" data-mode="batch" role="tab" aria-selected="true" title="多张照片按尺寸模板批量裁切导出">照片批量</button>
+    <button class="seg__btn is-active" data-mode="batch" role="tab" aria-selected="true" title="证件照全流程处理：批量裁切、换背景、抠图、尺寸调整">证件照处理</button>
     <button class="seg__btn" data-mode="crop" role="tab" aria-selected="false" title="单张照片固定裁剪框定位，原像素 1:1 导出">精准裁切</button>
   </div>
 
@@ -58,6 +58,7 @@
   <aside class="sidebar">
     <div class="panel-head">
       <h3>照片 <span id="photo-count" class="count">0</span></h3>
+      <button id="btn-batch-rename" class="btn btn--ghost btn--sm" title="按规则批量命名：{n}=序号，{name}=原名">批量命名</button>
       <button id="btn-clear" class="btn btn--ghost btn--sm">清空</button>
     </div>
     <ul id="photo-list" class="photo-list"></ul>
@@ -121,7 +122,7 @@
 
     <section class="panel__block">
       <div class="panel-head">
-        <h3>尺寸模板</h3>
+        <h3>① 选择尺寸</h3>
         <div class="panel-head__ops">
           <button id="btn-import-config" class="btn btn--ghost btn--sm" title="导入 presets.json">导入</button>
           <button id="btn-export-config" class="btn btn--ghost btn--sm" title="导出全部模板为 JSON">导出</button>
@@ -132,37 +133,46 @@
     </section>
 
     <section class="panel__block">
-      <div class="panel-head"><h3>自定义尺寸</h3></div>
+      <div class="panel-head"><h3>② 选择背景色</h3></div>
       <div class="form">
-        <div class="field field--row">
-          <input id="p-name" type="text" placeholder="模板名称（可选）">
+        <div class="bg-presets bg-presets--lg" id="out-bg-presets" role="group" aria-label="证件照背景色">
+          <button type="button" class="bg-swatch is-active" data-bg=""><i class="bg-swatch__none"></i>原图</button>
+          <button type="button" class="bg-swatch" data-bg="#FFFFFF"><i style="background:#FFFFFF"></i>白色</button>
+          <button type="button" class="bg-swatch" data-bg="#D74532"><i style="background:#D74532"></i>红色</button>
+          <button type="button" class="bg-swatch" data-bg="#628BCE"><i style="background:#628BCE"></i>蓝色</button>
+          <button type="button" class="bg-swatch" data-bg="#4B6190"><i style="background:#4B6190"></i>深蓝</button>
+          <label class="bg-swatch" id="bg-swatch-custom" data-bg="" title="自定义背景色">
+            <i id="out-bg-custom-chip"></i>自定义
+            <input id="out-bg-custom" type="color" value="#9CC3E5" hidden>
+          </label>
         </div>
-        <div class="field field--row">
-          <input id="p-w" type="number" min="1" step="1" value="25" aria-label="宽">
-          <span class="field__x">×</span>
-          <input id="p-h" type="number" min="1" step="1" value="35" aria-label="高">
-          <select id="p-unit" aria-label="单位">
-            <option value="mm">毫米</option>
-            <option value="px">像素</option>
-          </select>
-          <button id="btn-lock" class="icon-btn is-active" title="锁定宽高比">🔗</button>
+        <div class="seg seg--sm" id="bg-mode" role="group" aria-label="背景渲染模式">
+          <button type="button" class="seg__btn is-active" data-bgmode="pure">纯色</button>
+          <button type="button" class="seg__btn" data-bgmode="updown">上下渐变</button>
+          <button type="button" class="seg__btn" data-bgmode="center">中心渐变</button>
         </div>
-        <div class="field field--row">
-          <label class="field__label" for="p-dpi">输出分辨率</label>
-          <select id="p-dpi">
-            <option value="150">150 dpi</option>
-            <option value="200">200 dpi</option>
-            <option value="300" selected>300 dpi（冲印标准）</option>
-            <option value="350">350 dpi</option>
-            <option value="600">600 dpi（高清）</option>
-          </select>
-        </div>
-        <button id="btn-save-preset" class="btn btn--ghost btn--full">保存为我的模板</button>
+        <p class="field__hint">内置 AI 抠图模型，导入即自动去背景；换底仅作用于背景层，人物颜色不受影响。</p>
       </div>
     </section>
 
     <section class="panel__block">
-      <div class="panel-head"><h3>输出设置</h3></div>
+      <div class="panel-head"><h3>③ 排版照（打印）</h3></div>
+      <div class="form">
+        <div class="field field--row">
+          <label class="field__label" for="sheet-paper">相纸</label>
+          <select id="sheet-paper">
+            <option value="4r">6 寸相纸（横版 · 1795×1205）</option>
+            <option value="6r">8 寸相纸（横版 · 2400×1800）</option>
+          </select>
+        </div>
+        <div class="kv"><span>当前照片可排</span><b id="sheet-count">—</b></div>
+        <label class="check"><input id="sheet-cropline" type="checkbox"> 绘制裁剪参考线</label>
+        <button id="btn-sheet" class="btn btn--ghost btn--full" disabled>导出排版照（当前照片铺满整版）</button>
+      </div>
+    </section>
+
+    <section class="panel__block">
+      <div class="panel-head"><h3>④ 输出设置</h3></div>
       <div class="form">
         <div class="field field--row">
           <label class="field__label" for="out-format">格式</label>
@@ -176,6 +186,11 @@
           <label class="field__label" for="out-quality">质量</label>
           <input id="out-quality" type="range" min="50" max="100" step="1" value="92">
           <span id="quality-val" class="val">92%</span>
+        </div>
+        <div class="field field--row">
+          <label class="field__label" for="out-targetkb">目标大小</label>
+          <input id="out-targetkb" type="number" min="0" step="10" value="0" title="0 = 不限制；仅 JPG/WebP 生效，自动降低质量直至达标">
+          <span class="val">KB</span>
         </div>
         <div class="field field--row" id="row-bg">
           <label class="field__label" for="out-bg">背景色</label>
@@ -197,21 +212,141 @@
     </section>
 
     <section class="panel__block">
-      <div class="panel-head"><h3>视图</h3></div>
-      <div class="form">
-        <div class="field field--row">
-          <label class="field__label" for="ui-guide">参考线</label>
-          <select id="ui-guide">
-            <option value="thirds">三分线</option>
-            <option value="center">中心十字</option>
-            <option value="idphoto">证件照构图</option>
-            <option value="both">三分线 + 中心</option>
-            <option value="none">不显示</option>
-          </select>
+      <details class="adv" id="adv-panel">
+        <summary class="adv__summary">高级设置<span class="adv__hint">自定义尺寸 · AI 抠图 · 人脸构图 · 美颜 · 水印 · 视图</span></summary>
+        <div class="adv__body">
+          <h4 class="adv__sub">自定义尺寸</h4>
+          <div class="form">
+            <div class="field field--row">
+              <input id="p-name" type="text" placeholder="模板名称（可选）">
+            </div>
+            <div class="field field--row">
+              <input id="p-w" type="number" min="1" step="1" value="25" aria-label="宽">
+              <span class="field__x">×</span>
+              <input id="p-h" type="number" min="1" step="1" value="35" aria-label="高">
+              <select id="p-unit" aria-label="单位">
+                <option value="mm">毫米</option>
+                <option value="px">像素</option>
+              </select>
+              <button id="btn-lock" class="icon-btn is-active" title="锁定宽高比">🔗</button>
+            </div>
+            <div class="field field--row">
+              <label class="field__label" for="p-dpi">输出分辨率</label>
+              <select id="p-dpi">
+                <option value="150">150 dpi</option>
+                <option value="200">200 dpi</option>
+                <option value="300" selected>300 dpi（冲印标准）</option>
+                <option value="350">350 dpi</option>
+                <option value="600">600 dpi（高清）</option>
+              </select>
+            </div>
+            <button id="btn-save-preset" class="btn btn--ghost btn--full">保存为我的模板</button>
+          </div>
+          <h4 class="adv__sub">智能抠图（AI）</h4>
+          <div class="form">
+            <div class="field field--row">
+              <label class="field__label" for="matte-model">模型</label>
+              <select id="matte-model"></select>
+              <button id="btn-model-manage" class="btn btn--ghost btn--sm" title="模型管理">管理</button>
+            </div>
+            <div id="matte-status" class="field__hint">内置 MODNet 模型已就绪（无需下载），导入照片将自动抠图。</div>
+            <button id="btn-matte" class="btn btn--ghost btn--full">对当前照片重新抠图（去背景）</button>
+          </div>
+          <h4 class="adv__sub">人脸构图（对齐 HivisionIDPhotos）</h4>
+          <div class="form">
+            <div id="compo-status" class="field__hint">人脸模型未安装。下载后可在抠图后自动完成标准构图。</div>
+            <button id="btn-compo-model" class="btn btn--ghost btn--full">下载人脸检测模型（~105MB）</button>
+            <label class="check"><input id="compo-auto" type="checkbox" checked> 抠图后自动构图</label>
+            <div class="field field--row">
+              <label class="field__label" for="compo-head-ratio">头部占比</label>
+              <input id="compo-head-ratio" type="range" min="0.1" max="0.5" step="0.01" value="0.2">
+              <span id="compo-head-ratio-val" class="val">0.2</span>
+            </div>
+            <div class="field field--row">
+              <label class="field__label" for="compo-top-dist">头顶距离</label>
+              <input id="compo-top-dist" type="range" min="0.02" max="0.5" step="0.01" value="0.12">
+              <span id="compo-top-dist-val" class="val">0.12</span>
+            </div>
+            <button id="btn-compose" class="btn btn--ghost btn--full" disabled>对当前照片自动构图</button>
+          </div>
+          <h4 class="adv__sub">美颜（作用于人像，换底前生效）</h4>
+          <div class="form">
+            <div class="field field--row">
+              <label class="field__label" for="beauty-whitening">美白</label>
+              <input id="beauty-whitening" type="range" min="0" max="15" step="1" value="2">
+              <span id="beauty-whitening-val" class="val">2</span>
+            </div>
+            <div class="field field--row">
+              <label class="field__label" for="beauty-brightness">亮度</label>
+              <input id="beauty-brightness" type="range" min="-5" max="25" step="1" value="0">
+              <span id="beauty-brightness-val" class="val">0</span>
+            </div>
+            <div class="field field--row">
+              <label class="field__label" for="beauty-contrast">对比度</label>
+              <input id="beauty-contrast" type="range" min="-10" max="50" step="1" value="0">
+              <span id="beauty-contrast-val" class="val">0</span>
+            </div>
+            <div class="field field--row">
+              <label class="field__label" for="beauty-saturation">饱和度</label>
+              <input id="beauty-saturation" type="range" min="-10" max="50" step="1" value="0">
+              <span id="beauty-saturation-val" class="val">0</span>
+            </div>
+            <div class="field field--row">
+              <label class="field__label" for="beauty-sharpen">锐化</label>
+              <input id="beauty-sharpen" type="range" min="0" max="5" step="1" value="0">
+              <span id="beauty-sharpen-val" class="val">0</span>
+            </div>
+            <p class="field__hint">参数与 HivisionIDPhotos 一致；美白首次使用时自动加载 LUT（约 100KB）。</p>
+          </div>
+          <h4 class="adv__sub">水印（斜向重复平铺，换底后叠加）</h4>
+          <div class="form">
+            <label class="check"><input id="wm-enable" type="checkbox"> 添加文字水印</label>
+            <div id="wm-body" hidden>
+              <div class="field field--row">
+                <label class="field__label" for="wm-text">文字</label>
+                <input id="wm-text" type="text" maxlength="20" placeholder="最多20个字符" value="Hello">
+                <input id="wm-color" type="color" value="#FFFFFF" title="水印颜色" aria-label="水印颜色">
+              </div>
+              <div class="field field--row">
+                <label class="field__label" for="wm-size">大小</label>
+                <input id="wm-size" type="range" min="10" max="100" step="1" value="20">
+                <span id="wm-size-val" class="val">20</span>
+              </div>
+              <div class="field field--row">
+                <label class="field__label" for="wm-opacity">透明度</label>
+                <input id="wm-opacity" type="range" min="0" max="1" step="0.01" value="0.15">
+                <span id="wm-opacity-val" class="val">0.15</span>
+              </div>
+              <div class="field field--row">
+                <label class="field__label" for="wm-angle">角度</label>
+                <input id="wm-angle" type="range" min="0" max="360" step="1" value="30">
+                <span id="wm-angle-val" class="val">30</span>
+              </div>
+              <div class="field field--row">
+                <label class="field__label" for="wm-space">间距</label>
+                <input id="wm-space" type="range" min="10" max="200" step="1" value="25">
+                <span id="wm-space-val" class="val">25</span>
+              </div>
+              <p class="field__hint">参数与 HivisionIDPhotos 一致；水印随预览实时显示，并写入所有导出。</p>
+            </div>
+          </div>
+          <h4 class="adv__sub">视图</h4>
+          <div class="form">
+            <div class="field field--row">
+              <label class="field__label" for="ui-guide">参考线</label>
+              <select id="ui-guide">
+                <option value="thirds">三分线</option>
+                <option value="center">中心十字</option>
+                <option value="idphoto">证件照构图</option>
+                <option value="both">三分线 + 中心</option>
+                <option value="none">不显示</option>
+              </select>
+            </div>
+            <label class="check"><input id="ui-allow-blank" type="checkbox"> 允许留白（不强制铺满）</label>
+            <label class="check"><input id="ui-auto-orient" type="checkbox" checked> 自动纠正横竖方向</label>
+          </div>
         </div>
-        <label class="check"><input id="ui-allow-blank" type="checkbox"> 允许留白（不强制铺满）</label>
-        <label class="check"><input id="ui-auto-orient" type="checkbox" checked> 自动纠正横竖方向</label>
-      </div>
+      </details>
     </section>
 
     <div class="panel__sticky">
@@ -228,16 +363,18 @@
   <!-- 左：图片与来源 -->
   <aside class="sidebar">
     <div class="panel-head">
-      <h3>图片</h3>
-      <button id="crop-btn-reselect" class="btn btn--ghost btn--sm">重新选择</button>
+      <h3>照片列表</h3>
+      <button id="crop-btn-batch-rename" class="btn btn--ghost btn--sm" title="按规则批量命名：{n}=序号，{name}=原名">批量命名</button>
+      <button id="crop-btn-reselect" class="btn btn--ghost btn--sm">添加图片</button>
     </div>
     <div class="crop-side">
       <div id="crop-dropzone" class="crop-drop" tabindex="0" role="button" aria-label="选择图片">
         <div class="crop-drop__icon">＋</div>
         <p>点击选择，或把图片拖进来</p>
-        <span class="hint">单张 · JPG / PNG / WebP / BMP / GIF / AVIF</span>
+        <span class="hint">可多选 · JPG / PNG / WebP / BMP / GIF / AVIF</span>
       </div>
-      <input id="crop-file-input" type="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.avif" hidden>
+      <input id="crop-file-input" type="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.avif" multiple hidden>
+      <ul id="crop-photo-list" class="photo-list" aria-label="已导入照片"></ul>
       <div class="kv"><span>当前图片</span><b id="crop-file-name">未选择图片</b></div>
       <div class="kv"><span>原图尺寸</span><b id="crop-img-info">未选择图片</b></div>
       <details id="crop-meta-panel" class="meta-panel">
@@ -246,7 +383,7 @@
       </details>
     </div>
     <div class="sidebar__tip">
-      「精准裁剪」以<b>原图像素 1:1</b> 导出：裁剪框尺寸即输出尺寸，视图缩放只影响预览，不重采样、不二次压缩。
+      「精准裁剪」以<b>原像素 1:1</b> 导出：输出 = 框下区域的真实像素，滚轮缩放图片会直接改变输出尺寸，不重采样、不二次压缩。双击照片名可重命名。
     </div>
   </aside>
 
@@ -262,11 +399,10 @@
 
     <div class="stage__toolbar">
       <div class="stage__nav">
-        <button id="crop-btn-fit" class="icon-btn" title="裁剪框适配窗口">⤢</button>
-        <button id="crop-btn-reset" class="icon-btn" title="重置位置到居中">⟲</button>
+        <button id="crop-btn-reset" class="icon-btn" title="复位：裁剪区域恢复为整张图片">⟲</button>
       </div>
       <div class="stage__actions">
-        <span class="hint">拖动 8 个控制点调整尺寸 · 按住框内拖动移动位置 · 滚轮缩放视图</span>
+        <span class="hint">拖动 8 个控制点调整区域 · 框内拖动移动图片 · 滚轮缩放图片 · 双击复位</span>
       </div>
     </div>
 
@@ -276,8 +412,8 @@
 
     <div class="stage__footer">
       <div class="slider-row">
-        <label for="crop-zoom">视图缩放</label>
-        <input id="crop-zoom" type="range" min="2" max="400" step="1" value="100">
+        <label for="crop-zoom">图片缩放</label>
+        <input id="crop-zoom" type="range" min="100" max="800" step="1" value="100">
         <span id="crop-zoom-val" class="val">100%</span>
       </div>
       <div class="size-badge" id="crop-pos-info">X 0 , Y 0</div>
@@ -326,7 +462,7 @@
     </section>
 
     <div class="panel__sticky">
-      <button id="crop-btn-cancel" class="btn btn--ghost">取消</button>
+      <button id="crop-btn-cancel" class="btn btn--ghost" title="移除列表中全部照片">清空</button>
       <button id="crop-btn-confirm" class="btn btn--primary btn--block">确定并下载</button>
       <p class="panel__note">浏览器本地导出，不上传服务器；原文件不会被修改。</p>
     </div>
@@ -351,6 +487,11 @@
 <script src="assets/js/editor.js"></script>
 <script src="assets/js/exporter.js"></script>
 <script src="assets/js/metadata.js"></script>
+<script src="assets/js/bgreplace.js"></script>
+<script src="assets/js/beauty.js"></script>
+<script src="assets/js/watermark.js"></script>
+<script src="assets/js/facedetect.js"></script>
+<script src="assets/js/matting.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/cropper.js"></script>
 </body>
