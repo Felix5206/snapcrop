@@ -258,17 +258,24 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
   - 深色模式、快捷键、界面语言中文化
   - Windows 双产物：安装向导版（可选安装路径）+ 便携版单文件
 
-## 💬 用户反馈群
+## 💬 用户反馈
 
-使用中遇到问题、有功能建议或想交流使用心得，欢迎加入 QQ 用户群：**1004831491**
+使用中遇到问题、有功能建议或想交流使用心得，欢迎通过以下任一方式反馈：
 
-<div align="center">
-
-<img src="assets/brand/qrcode-qq.jpg" alt="简裁 SnapCrop 用户反馈群 QQ 二维码（群号 1004831491）" width="280">
-
-扫码或搜索群号即可加入
-
-</div>
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/brand/qrcode-qq.jpg" alt="简裁 SnapCrop 用户反馈群 QQ 二维码" width="240"><br>
+      <b>QQ 用户群</b><br>
+      群号 1004831491，扫码或搜群号加入
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/brand/qrcode-feedback.png" alt="简裁 SnapCrop 用户反馈问卷二维码" width="240"><br>
+      <b>飞书反馈问卷</b><br>
+      扫码匿名填写，约 1 分钟
+    </td>
+  </tr>
+</table>
 
 ## 🤝 贡献
 
