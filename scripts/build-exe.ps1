@@ -1,4 +1,4 @@
-# SnapCrop Windows 便携版打包脚本
+﻿# SnapCrop Windows 便携版打包脚本
 # 依赖：Python 3.8+ 与 PyInstaller（pip install pyinstaller）
 # 用法：在项目根目录执行 powershell -ExecutionPolicy Bypass -File scripts\build-exe.ps1
 # 产物：dist\SnapCrop.exe（单文件，免安装、内置 Python 运行时）
