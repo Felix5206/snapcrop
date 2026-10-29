@@ -34,9 +34,9 @@ window.SC = window.SC || {};
     { id: 'cn-2cun', name: '二寸', group: '常用证件照', unit: 'mm', w: 35, h: 49, dpi: 300, desc: '413 × 579 px @300dpi' },
     { id: 'cn-2cun-small', name: '小二寸', group: '常用证件照', unit: 'mm', w: 35, h: 45, dpi: 300, desc: '413 × 531 px @300dpi' },
     { id: 'cn-2cun-large', name: '大二寸', group: '常用证件照', unit: 'mm', w: 35, h: 53, dpi: 300, desc: '413 × 626 px @300dpi' },
-    { id: 'cn-idcard', name: '身份证', group: '常用证件照', unit: 'mm', w: 26, h: 32, dpi: 300, desc: '358 × 441 px @300dpi' },
+    { id: 'cn-idcard', name: '身份证', group: '常用证件照', unit: 'mm', w: 26, h: 32, dpi: 300, desc: '307 × 378 px @300dpi' },
     { id: 'cn-driving', name: '驾驶证', group: '常用证件照', unit: 'mm', w: 22, h: 32, dpi: 300, desc: '260 × 378 px @300dpi' },
-    { id: 'cn-social', name: '社保卡', group: '常用证件照', unit: 'mm', w: 26, h: 32, dpi: 300, desc: '358 × 441 px @300dpi' },
+    { id: 'cn-social', name: '社保卡', group: '常用证件照', unit: 'mm', w: 26, h: 32, dpi: 300, desc: '307 × 378 px @300dpi' },
     { id: 'cn-teacher', name: '教师资格', group: '常用证件照', unit: 'mm', w: 25, h: 35, dpi: 300, desc: '小二寸免冠，底色以公告为准' },
 
     /* ------------------------ 签证 / 出入境 ------------------------ */
