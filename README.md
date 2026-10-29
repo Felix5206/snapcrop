@@ -11,6 +11,9 @@
 <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square">
 <img alt="Vanilla JS" src="https://img.shields.io/badge/vanilla-JS-f7df1e?style=flat-square&logo=javascript&logoColor=000">
 <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-4285f4?style=flat-square">
+<img alt="GitHub Stars" src="https://img.shields.io/github/stars/Felix5206/snapcrop?style=flat-square&logo=github">
+<img alt="GitHub Forks" src="https://img.shields.io/github/forks/Felix5206/snapcrop?style=flat-square&logo=github">
+<img alt="GitHub Watchers" src="https://img.shields.io/github/watchers/Felix5206/snapcrop?style=flat-square&logo=github">
 
 **[界面预览](#-界面预览)** ｜ **[快速开始](#-快速开始)** ｜ **[功能特性](#-功能特性)** ｜ **[使用流程](#-使用流程)** ｜ **[项目结构](#-项目结构)** ｜ **[常见问题](#-faq)**
 
@@ -233,6 +236,14 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
 - [ ] 多模板同时输出（一次裁切导出多规格）
 - [ ] 人脸检测自动居中构图（可选加载）
 - [ ] 国际化（English UI）
+
+## 📈 项目趋势
+
+如果这个项目对你有帮助，欢迎点亮 ⭐ Star 支持一下。
+
+<a href="https://star-history.com/#Felix5206/snapcrop&Date">
+  <img src="https://api.star-history.com/svg?repos=Felix5206/snapcrop&type=Date" alt="简裁 SnapCrop Star 历史趋势图" width="840" style="max-width: 100%; height: auto;">
+</a>
 
 ## 💬 用户反馈群
 
