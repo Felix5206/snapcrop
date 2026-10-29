@@ -661,7 +661,7 @@ window.SC = window.SC || {};
     });
   }
 
-  function onChangeTransform() { /* 预留：可在此做自动标脏 */ }
+  function onChangeTransform() { syncPanel(); }
 
   function applyToAll() {
     var it = current();

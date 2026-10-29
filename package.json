@@ -1,6 +1,6 @@
 {
   "name": "snapcrop",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "简裁 SnapCrop — 纯本地、零上传的照片裁切工具：照片批量 + 原像素无损精准裁切。",
   "keywords": [
     "photo-crop",

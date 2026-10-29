@@ -4,7 +4,7 @@
 ;       可选桌面图标、标准卸载程序、可选安装后启动。
 
 #ifndef APP_VERSION
-  #define APP_VERSION "2.0.0"
+  #define APP_VERSION "2.0.1"
 #endif
 
 #define APP_NAME "简裁 SnapCrop"

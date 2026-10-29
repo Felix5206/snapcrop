@@ -509,8 +509,8 @@ function inspectZip(u8) {
 
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
-  ok(SC.VERSION === '2.0.0', 'SC.VERSION = 2.0.0');
-  ok(SC.VERSION_LABEL === 'v' + SC.VERSION, 'SC.VERSION_LABEL = v2.0.0');
+  ok(SC.VERSION === '2.0.1', 'SC.VERSION = 2.0.1');
+  ok(SC.VERSION_LABEL === 'v' + SC.VERSION, 'SC.VERSION_LABEL = v2.0.1');
   ok(pkg.version === SC.VERSION, 'package.json 版本与 SC.VERSION 一致');
   ok(man.version === SC.VERSION, 'manifest 版本与 SC.VERSION 一致');
   ok(/data-app-version/.test(html), '界面含版本号渲染节点');

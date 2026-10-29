@@ -7,7 +7,7 @@
 **纯本地、零上传的照片处理工具** — 照片批量裁切 + 原像素无损精准裁切 + AI 抠图证件照换底
 
 <img alt="License" src="https://img.shields.io/badge/License-MIT-6aa84f?style=flat-square">
-<img alt="Version" src="https://img.shields.io/badge/version-2.0.0-4c1?style=flat-square">
+<img alt="Version" src="https://img.shields.io/badge/version-2.0.1-4c1?style=flat-square">
 <img alt="Vanilla JS" src="https://img.shields.io/badge/vanilla-JS-f7df1e?style=flat-square&logo=javascript&logoColor=000">
 <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-4285f4?style=flat-square">
 <img alt="GitHub Stars" src="https://img.shields.io/github/stars/Felix5206/snapcrop?style=flat-square&logo=github">
@@ -277,6 +277,9 @@ A：v2.0.0 的 AI 功能需要用 `fetch()` 加载 ONNX 模型、用动态 `impo
 
 <!-- 发布同步机制：每次发布 GitHub Release 时，必须同步将新版本条目添加至本列表最顶部（倒序排列），
      格式：- **[vX.Y.Z](https://github.com/Felix5206/snapcrop/releases/tag/vX.Y.Z)** — YYYY-MM-DD + 核心变更要点。 -->
+
+- **[v2.0.1](https://github.com/Felix5206/snapcrop/releases/tag/v2.0.1)** — 2026-10-29
+  - 修复：证件照页面滚轮缩放时缩放进度条与百分比数值不同步
 
 - **[v2.0.0](https://github.com/Felix5206/snapcrop/releases/tag/v2.0.0)** — 2026-10-29
   - HivisionIDPhotos 全量对齐：尺寸表、六色、四抠图模型

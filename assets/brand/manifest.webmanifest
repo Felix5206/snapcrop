@@ -2,7 +2,7 @@
   "name": "简裁 SnapCrop",
   "short_name": "简裁",
   "description": "纯本地、零上传的照片裁切工具：照片批量 + 原像素无损精准裁切",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "id": "/index.html",
   "start_url": "./index.html",
   "scope": "./",
