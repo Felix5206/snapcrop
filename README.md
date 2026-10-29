@@ -73,8 +73,9 @@ v2.0.0 起以 [HivisionIDPhotos](https://github.com/xiaolin199912/HivisionIDPhot
 无需安装任何依赖，四种方式任选：
 
 ```bash
-# 方式 1：直接打开（最简单）
+# 方式 1：直接打开（仅裁切功能可用）
 # 双击 index.html（推荐 Chrome / Edge / Firefox 最新版）
+# ⚠️ AI 抠图/换底/人脸检测等依赖 WASM 与 ONNX 模型的功能不可用，需用方式 2/3
 
 # 方式 2：本地静态服务器（推荐，功能最完整）
 python serve.py            # 默认 http://127.0.0.1:5173
@@ -92,8 +93,12 @@ npx --yes serve .          # 若机器上没有 Python
 
 重新打包：`npm run build:exe:win`（便携版单文件）或 `npm run build:installer`（安装向导，需 Inno Setup 6）。
 
-> [!TIP]
-> 💡 `file://` 协议下绝大多数功能可用，但部分浏览器会限制剪贴板与本地存储，开发时建议用方式 2。
+> [!WARNING]
+> 🚫 **请勿双击 `index.html` 来使用 AI 功能**。v2.0.0 的抠图/换底/人脸检测依赖 `fetch()` 加载 ONNX 模型与动态 `import()` 加载 onnxruntime-web 的 WASM 运行时，而 Chrome/Edge 在 `file://` 协议下会出于安全策略拦截这两类本地文件请求（origin 为 `null`，触发 CORS），导致 AI 功能直接报错。
+>
+> ✅ **正确方式**：用方式 2（`python serve.py`）或方式 3（安装版/便携版 exe）——它们内部均起本地 HTTP 服务（`http://127.0.0.1:5173`），同源请求可正常加载模型与 WASM，AI 功能完整可用。
+>
+> 💡 仅当你只用到「照片批量裁切 / 精准裁切」（纯 Canvas，无 AI）时，双击 `index.html` 才可正常使用。
 
 ## 🤔 两种模式的区别
 
@@ -241,6 +246,9 @@ A：会。导出时原始 EXIF（拍摄时间、设备型号、GPS 等）整块�
 
 **Q：可以在公司内网部署吗？**
 A：可以，整个目录即静态站点，复制到任意 Web 服务器即可，无需构建。
+
+**Q：为什么双击 `index.html` 后抠图/换底用不了？**
+A：v2.0.0 的 AI 功能需要用 `fetch()` 加载 ONNX 模型、用动态 `import()` 加载 onnxruntime-web 的 WASM 运行时；Chrome/Edge 在 `file://` 协议下会拦截这两类本地文件请求（origin 为 `null`，触发 CORS），所以 AI 功能直接报错。**解决办法**：改用 `python serve.py` 或直接运行 `SnapCrop.exe` / 安装版——它们内部启动本地 HTTP 服务（`http://127.0.0.1:5173`），同源请求可正常加载模型与 WASM。纯裁切功能（批量 / 精准）不受此影响，双击 `index.html` 仍可使用。
 
 ## ⚠️ 已知限制
 
