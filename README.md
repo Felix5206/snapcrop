@@ -4,11 +4,10 @@
 
 # 简裁 · SnapCrop
 
-**纯本地、零上传的照片裁切工具** — 照片批量 + 原像素无损精准裁切
+**纯本地、零上传的照片处理工具** — 照片批量裁切 + 原像素无损精准裁切 + AI 抠图证件照换底
 
 <img alt="License" src="https://img.shields.io/badge/License-MIT-6aa84f?style=flat-square">
 <img alt="Version" src="https://img.shields.io/badge/version-2.0.0-4c1?style=flat-square">
-<img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square">
 <img alt="Vanilla JS" src="https://img.shields.io/badge/vanilla-JS-f7df1e?style=flat-square&logo=javascript&logoColor=000">
 <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-4285f4?style=flat-square">
 <img alt="GitHub Stars" src="https://img.shields.io/github/stars/Felix5206/snapcrop?style=flat-square&logo=github">
@@ -23,11 +22,13 @@
 
 ## 📖 项目简介
 
-证件照、报名照、签证照的处理长期依赖在线工具——照片要上传到别人的服务器，隐私与批量效率都不可控。简裁用浏览器原生 Canvas 把这件事搬回本地：
+证件照、报名照、签证照的处理长期依赖在线工具——照片要上传到别人的服务器，隐私与批量效率都不可控。简裁把这件事完全搬回本地：浏览器原生 Canvas 完成裁切，内置 ONNX 模型完成 AI 抠图，**全程不经过任何服务器**。
 
-- **不上传** — 解码、裁切、编码全部在浏览器完成，没有后端，没有网络请求，可用 DevTools Network 面板自证。
-- **不安装** — 零依赖单页应用，双击 `index.html` 即用，也可托管到任意静态服务器。
+- **不上传** — 解码、裁切、抠图、编码全部在浏览器完成，没有后端，没有网络请求，可用 DevTools Network 面板自证。
+- **不安装** — 单页应用，双击 `index.html` 即用，也可托管到任意静态服务器（AI 能力依赖本地 WASM 运行时，无需联网下载模型）。
 - **不降质** — 精准裁切按原图像素 1:1 输出，不重采样、不二次编码；导出完整保留 EXIF 元数据。
+
+v2.0.0 起以 [HivisionIDPhotos](https://github.com/xiaolin199912/HivisionIDPhotos)（Apache-2.0）为蓝本完成证件照能力对齐：内置 MODNet 抠图模型、六色证件照换底、打印排版、美颜、文字水印、人脸检测自动构图。
 
 适合：教务 / 人事批量处理证件照、摄影工作室出片、社媒批量裁图，以及任何「不想把照片传给第三方」的场景。
 
@@ -41,8 +42,16 @@
 | 📐 尺寸模板 | 内置 31 个模板：一寸至大二寸、身份证、护照/签证、3R–10R 冲印等；毫米/像素双单位，可自由扩展 |
 | 🖱️ 编辑 | 拖动移动、滚轮缩放（100%–800%）、任意角度旋转 + 一键 90°、镜像、三分线/中心构图参考线 |
 | 🗂️ 批量 | 「应用到全部」同步构图；「✓ 确认并下一张」逐张复核；可选仅导出已确认项 |
-| 💾 导出 | JPG / PNG / WebP 质量可调，背景色填充或 PNG 透明底；**1 张 → 单文件，2 张及以上 → 自动 ZIP（零压缩）**；文件名模板可配、自动去重 |
+| 💾 导出 | JPG / PNG / WebP 质量可调，背景色填充或 PNG 透明底；文件名模板可配、自动去重 |
 | 🏷️ 元数据 | **导出完整保留原始 EXIF**（拍摄时间、设备型号、GPS 位置等），压缩包解压后同样完整 |
+| 🤖 AI 抠图 | 内置 `hivision_modnet.onnx` 与 `modnet_photographic_portrait_matting.onnx`，导入照片自动去背景，**全程本地推理、无需联网下载**（onnxruntime-web WASM 后端） |
+| 🎨 证件照换底 | 已抠图走 alpha 通道精确合成（人物像素零改动），未抠图走 HSV 魔棒兜底；六种证件照底色 + 纯色 / 上下渐变 / 中心渐变三模式 |
+| 🖨️ 打印排版 | 6 寸（4R）1795×1205 与 8 寸（6R）2400×1800 自动拼版，间距 30、边距 70/50 |
+| 📦 导出增强 | JPEG/WebP 按目标 KB 迭代质量压缩；导出写入 JFIF/EXIF/pHYs DPI；**1 张 → 单文件，2 张及以上 → 自动 ZIP（零压缩）**；文件名模板可配、自动去重 |
+| ✨ 美颜 | 美白 LUT、亮度、对比度、饱和度、锐化参数化调节 |
+| 💧 文字水印 | 颜色、字号、透明度、角度、间距参数化，斜向平铺 |
+| 👤 人脸检测 | RetinaFace-ResNet50（ONNX）自动构图，头部占比与头顶距离可调 |
+| 📝 照片命名 | 左侧列表单张重命名 + 批量命名（序号 / 补零序号 / 原名模板变量） |
 | 🌙 体验 | 横竖版自动纠正、深色模式、响应式三栏/堆叠布局、快捷键、参数本地持久化 |
 
 ## 🖼️ 界面预览
@@ -174,10 +183,17 @@ snapcrop/
 │   │   ├── exporter.js        # 批量渲染、编码、EXIF 移植、打包导出
 │   │   ├── cropper.js         # 精准裁切：8 控制点裁切框 + 原像素 1:1 导出
 │   │   ├── metadata.js        # EXIF 解析与移植（JPEG/PNG/WebP 三容器）
+│   │   ├── matting.js         # AI 抠图：onnxruntime-web 推理，输出透明通道
+│   │   ├── bgreplace.js       # 证件照换底：alpha 精确合成 + HSV 魔棒兜底
+│   │   ├── beauty.js          # 美颜：美白 LUT、亮度/对比度/饱和度/锐化
+│   │   ├── watermark.js       # 文字水印：颜色/字号/透明度/角度/间距参数化
+│   │   ├── facedetect.js      # 人脸检测：RetinaFace-ResNet50 自动构图
 │   │   ├── app.js             # 主控：状态、渲染、事件、快捷键、模式切换
 │   │   └── version.js         # 版本号单一数据源 SC.VERSION
+│   ├── vendor/ort/            # onnxruntime-web 运行时（WASM + JS，本地推理用）
+│   ├── models/                # 内置 ONNX 模型：hivision_modnet / modnet_photographic_portrait_matting
 │   └── brand/                 # banner.jpg（仓库横幅）、界面截图、icon.svg、
-│                              # 10 档 PNG、favicon.ico、maskable、manifest
+│                              # 多档 PNG、favicon.ico、maskable、manifest
 ├── config/presets.json        # 可导入的扩展模板示例
 ├── tests/run.js               # 零依赖自测：node tests/run.js
 ├── scripts/                   # 图标生成（Python）、发布脚本、Windows 打包（便携版 / 安装向导）
@@ -192,6 +208,10 @@ snapcrop/
 - **铺满计算**：旋转后包围盒 `bw = iw·|cosθ| + ih·|sinθ|`，覆盖系数 `max(W/bw, H/bh)`；位移被 `clampOffset()` 夹紧，照片边缘永不进入裁切框。
 - **EXIF 移植**（`metadata.js`）：Canvas 重绘会剥离元数据；导出时把源文件 EXIF/TIFF 块整块搬入新文件，仅改写像素尺寸与方向两个内联标签，失败时原样导出、绝不损坏图像。
 - **ZIP 打包**（`zip.js`）：手写 ZIP 生成（store 零压缩 + CRC32），图片本身已压缩，避免引入外部依赖。
+- **AI 抠图**（`matting.js`）：基于 onnxruntime-web（`assets/vendor/ort/`）加载 `hivision_modnet.onnx` / `modnet_photographic_portrait_matting.onnx`，单线程 WASM 后端推理，输出透明通道；alpha < 4 归零以消除残留杂色。
+- **证件照换底**（`bgreplace.js`）：已抠图走 alpha 精确合成（人物像素零改动），未抠图走外环逐通道中位数采样的 HSV 魔棒兜底；背景支持纯色 / 上下渐变 / 中心渐变。
+- **美颜与水印**（`beauty.js` / `watermark.js`）：美白 LUT + 亮度/对比度/饱和度/锐化调节；文字水印颜色、字号、透明度、角度、间距参数化斜向平铺。
+- **人脸检测自动构图**（`facedetect.js`）：RetinaFace-ResNet50（ONNX）检测人脸，按头部占比与头顶距离自动居中构图。
 - **批量不卡顿**：逐张渲染、每张让出一帧，进度实时可取消。
 
 ## 🌐 浏览器兼容性
@@ -207,8 +227,8 @@ snapcrop/
 
 ## ❓ FAQ
 
-**Q：照片会被上传到服务器吗？**
-A：不会。没有后端，代码中不存在任何上传请求，DevTools Network 面板可自行验证。
+**Q：照片会被上传到服务器吗？AI 抠图会联网吗？**
+A：不会。没有后端，代码中不存在任何上传请求；AI 抠图使用仓库内置的 ONNX 模型与本地 WASM 运行时在浏览器内推理，**不下载模型、不联网**，可用 DevTools Network 面板自行验证。
 
 **Q：导出的照片为什么比原图小？**
 A：输出尺寸由模板决定（如 295×413）。需要更大的图请提高 DPI 或改用像素单位。
@@ -232,9 +252,9 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
 
 ## 🗺️ 路线图
 
-- [ ] 常用背景色预设与一键换底（简单抠图）
+- [x] 常用背景色预设与一键换底 — v2.0.0 已实现（AI 抠图 + alpha 合成 / 魔棒兜底，六色 + 渐变三模式）
+- [x] 人脸检测自动居中构图 — v2.0.0 已实现（RetinaFace-ResNet50 ONNX）
 - [ ] 多模板同时输出（一次裁切导出多规格）
-- [ ] 人脸检测自动居中构图（可选加载）
 - [ ] 国际化（English UI）
 
 ## 📈 项目趋势
@@ -290,7 +310,7 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
 欢迎报告缺陷、提出需求、改进文档或提交代码：
 
 1. Fork 并创建分支：`git checkout -b feat/your-feature`
-2. 保持**零依赖**原则，修改后在 Chrome 与 Firefox 中手动验证
+2. 保持**零 npm 运行时依赖**原则（AI 运行时与模型已内置于 `assets/vendor/`、`assets/models/`），修改后在 Chrome 与 Firefox 中手动验证
 3. 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/)
 4. 发起 Pull Request，说明动机、实现与自测结果
 
@@ -298,4 +318,9 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
 
 ## 📄 许可证
 
-[MIT License](./LICENSE) — 可自由使用、修改与分发（含商业用途），需保留版权声明。
+本项目代码以 [MIT License](./LICENSE) 发布，可自由使用、修改与分发（含商业用途），需保留版权声明。
+
+> v2.0.0 起内置以下第三方组件，请遵循其原始许可条款：
+> - [HivisionIDPhotos](https://github.com/xiaolin199912/HivisionIDPhotos)（Apache-2.0）— 尺寸模板表、证件照底色、抠图模型清单
+> - MODNet 抠图模型（Apache-2.0）— `hivision_modnet.onnx`、`modnet_photographic_portrait_matting.onnx`
+> - onnxruntime-web（MIT）— `assets/vendor/ort/` WASM 推理运行时
