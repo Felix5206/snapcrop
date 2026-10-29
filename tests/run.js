@@ -488,7 +488,7 @@ function inspectZip(u8) {
   ok(man.icons.some(function (i) { return i.sizes === '192x192'; }), 'manifest 含 192×192（Android）');
   ok(fs.existsSync(path.join(ROOT, 'assets', 'brand', 'favicon.ico')), 'favicon.ico 存在');
 
-  /* 仓库横幅：1200×630，README 主图 / GitHub social preview 通用 */
+  /* 仓库横幅：README 顶部主图，要求高清横向比例 */
   const bnPath = path.join(ROOT, 'assets', 'brand', 'banner.jpg');
   ok(fs.existsSync(bnPath), '仓库横幅 banner.jpg 存在');
   const bnBuf = fs.readFileSync(bnPath);
@@ -502,7 +502,7 @@ function inspectZip(u8) {
     if (m === 0xD8 || (m >= 0xD0 && m <= 0xD9)) continue;
     i += 1 + bnBuf.readUInt16BE(i + 2); // 跳过该段（含本字节与长度字段）
   }
-  ok(bnW === 1200 && bnH === 630, '横幅尺寸为 1200×630（GitHub social preview 比例）', bnW + '×' + bnH);
+  ok(bnW >= 1200 && bnH >= 600 && bnW / bnH > 1.6, '横幅为高清横向图（当前 ' + bnW + '×' + bnH + '）', bnW + '×' + bnH);
   ok(bnBuf.length < 400 * 1024, '横幅体积 < 400 KB（当前 ' + Math.round(bnBuf.length / 1024) + ' KB，README 加载友好）');
   ok(fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').includes('assets/brand/banner.jpg'),
     'README 顶部引用横幅图');
