@@ -231,20 +231,6 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
 
 详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-## 👨‍💻 作者
-
-<div align="center">
-
-<img src="assets/brand/avatar.png" width="120" style="border-radius: 50%;" alt="Felix">
-
-**Felix（范建亮）** — 计算机基础应用教师 · 全栈开发者 · 摄影师
-
-<a href="https://github.com/Felix5206"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Felix5206-181717?style=for-the-badge&logo=github"></a>
-
-</div>
-
-本项目源于日常教学与业务中「批量处理证件照、又不想上传第三方」的需求，坚持三条底线：**零依赖、零上传、零构建**。
-
 ## 📄 许可证
 
 [MIT License](./LICENSE) — 可自由使用、修改与分发（含商业用途），需保留版权声明。
