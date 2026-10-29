@@ -29,7 +29,8 @@
     "start:node": "npx --yes serve .",
     "start:php": "php -S 127.0.0.1:5173",
     "build:exe": "python -m PyInstaller --noconfirm --clean --onefile --name SnapCrop --icon assets/brand/app.ico --add-data \"index.html;.\" --add-data \"assets;assets\" --add-data \"config;config\" serve.py",
-    "build:exe:win": "powershell -ExecutionPolicy Bypass -File scripts/build-exe.ps1"
+    "build:exe:win": "powershell -ExecutionPolicy Bypass -File scripts/build-exe.ps1",
+    "build:installer": "powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1"
   },
   "engines": {
     "node": ">=16"

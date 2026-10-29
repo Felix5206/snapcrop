@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/banner.jpg" alt="简裁 SnapCrop — 本地无损照片裁切工具" width="840">
+<img src="assets/brand/banner.jpg" alt="简裁 SnapCrop — 本地无损照片裁切工具" width="840" style="max-width: 100%; height: auto;">
 
 # 简裁 · SnapCrop
 
@@ -55,15 +55,18 @@ python serve.py            # 默认 http://127.0.0.1:5173
 npm start                  # 等价，调用上面的 python 脚本
 npx --yes serve .          # 若机器上没有 Python
 
-# 方式 3：Windows 便携版（免安装，适合分发）
-# 双击 SnapCrop.exe（dist/ 或 Releases）——内置完整运行时，目标机器无需任何环境
+# 方式 3：Windows 安装版 / 便携版（免环境，适合分发）
+# 安装版：运行 SnapCrop-Setup-x.y.z.exe（dist/ 或 Releases）——向导可自选安装路径，
+#         创建开始菜单快捷方式与卸载程序，默认装到用户目录（免管理员权限）
+# 便携版：双击 SnapCrop.exe——单文件免安装，内置完整运行时
 
 # 方式 4：部署为静态站点
 # 整个目录 push 到 GitHub Pages / Vercel / Netlify 即可，无需构建
 ```
 
-重新打包便携版：`npm run build:exe:win`（Windows）或 `npm run build:exe`。
+重新打包：`npm run build:exe:win`（便携版单文件）或 `npm run build:installer`（安装向导，需 Inno Setup 6）。
 
+> [!TIP]
 > 💡 `file://` 协议下绝大多数功能可用，但部分浏览器会限制剪贴板与本地存储，开发时建议用方式 2。
 
 ## 🤔 两种模式的区别
@@ -95,9 +98,10 @@ npx --yes serve .          # 若机器上没有 Python
 3. **定位** — 拖动裁切框移动位置；框外遮罩暗化，「框内效果」实时同步；边界约束保证框不出图、最小 16px。
 4. **导出** — 点「确定并下载」，本地生成文件，不经过服务器、不改动原文件。
 
+> [!IMPORTANT]
 > 🔑 **无损原理**：`drawImage(源矩形, 目标矩形)` 两者尺寸恒等且关闭图像平滑，是原图像素的直接拷贝；PNG 无损输出，「沿用原格式」时 JPEG/WebP 用质量 1.0。
 
-### ⌨️ 快捷键
+## ⌨️ 快捷键
 
 | 按键 | 作用 | 按键 | 作用 |
 | --- | --- | --- | --- |
@@ -117,6 +121,7 @@ npx --yes serve .          # 若机器上没有 Python
 | 冲印照片 | 3–12 寸（3R–10R） | 63.5×88.9 至 254×304.8 mm | 750×1050 至 3000×3600 |
 | 社交与通用 | 方形头像 / 1080 方图 / 9:16 / 16:9 / A4 | — | 295² 至 2480×3508 |
 
+> [!WARNING]
 > 证件照规范会调整，实际提交前请以官方最新公告为准；模板支持界面导入与代码扩展（见下）。
 
 ## ⚙️ 配置与自定义
@@ -138,7 +143,7 @@ npx --yes serve .          # 若机器上没有 Python
 
 ## 📁 项目结构
 
-```
+```text
 snapcrop/
 ├── index.html                 # 单页应用入口（三栏布局）
 ├── assets/
@@ -158,7 +163,7 @@ snapcrop/
 │                              # 10 档 PNG、favicon.ico、maskable、manifest
 ├── config/presets.json        # 可导入的扩展模板示例
 ├── tests/run.js               # 零依赖自测：node tests/run.js
-├── scripts/                   # 图标生成（Python）、发布脚本（bash/.ps1）
+├── scripts/                   # 图标生成（Python）、发布脚本、Windows 打包（便携版 / 安装向导）
 ├── serve.py                   # 零依赖本地静态服务器
 ├── package.json               # 元信息与便捷脚本（非运行时依赖）
 └── .github/                   # Issue / PR 模板
