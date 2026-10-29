@@ -245,6 +245,19 @@ A：可以，整个目录即静态站点，复制到任意 Web 服务器即可�
   <img src="https://api.star-history.com/svg?repos=Felix5206/snapcrop&type=Date" alt="简裁 SnapCrop Star 历史趋势图" width="840" style="max-width: 100%; height: auto;">
 </a>
 
+## 📋 版本历史
+
+<!-- 发布同步机制：每次发布 GitHub Release 时，必须同步将新版本条目添加至本列表最顶部（倒序排列），
+     格式：- **[vX.Y.Z](https://github.com/Felix5206/snapcrop/releases/tag/vX.Y.Z)** — YYYY-MM-DD + 核心变更要点。
+     该约定同时记录在 versions/VERSION_INDEX.md 使用约定中。 -->
+
+- **[v1.0.0](https://github.com/Felix5206/snapcrop/releases/tag/v1.0.0)** — 2026-10-29
+  - 首个正式版：照片批量 + 精准裁切双模式
+  - 31 个内置尺寸模板，支持自定义模板
+  - 导出完整保留 EXIF 元数据（JPEG / PNG / WebP）
+  - 深色模式、快捷键、界面语言中文化
+  - Windows 双产物：安装向导版（可选安装路径）+ 便携版单文件
+
 ## 💬 用户反馈群
 
 使用中遇到问题、有功能建议或想交流使用心得，欢迎加入 QQ 用户群：**1004831491**
